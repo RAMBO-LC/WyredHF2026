@@ -2,6 +2,10 @@
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "project-director",
   "subagent_depth": 2,
+
+  "provider": "ollama-cloud",
+  "model": "qwen3.5-coder:cloud",
+  "temperature": 0.2,
   "agent": {
     "project-director": {
       "mode": "primary",

@@ -1,4 +1,30 @@
 
+# Team Brain — Project Context & Memory Engine Objective
+
+## Product Objective
+We are building **Team Brain**: a shared, persistent knowledge and memory system that helps a team retain, connect, retrieve, and reuse knowledge across projects, documents, decisions, bugs, and coding sessions.
+The core problem is that important knowledge becomes scattered across Markdown files, source code, documents, conversations, previous debugging sessions, and individual team members' understanding. Team Brain transforms that scattered information into searchable, evidence-backed, reusable knowledge.
+
+**The Core Promise:** Team Brain turns a team's scattered resources, previous solutions, decisions, and project knowledge into shared intelligence that helps people and AI coding agents understand what the team already knows.
+*Note: This is a memory and knowledge-management product, not a fitness tracker, habit tracker, streak application, or generic notification product.*
+
+## Ownership and Component Distinctions
+The primary ownership is the **Memory System, Smart Knowledge Management, and Context Engine** (`AGENT_MEMORY_TEAM_BRAIN.md`).
+The design must distinguish these related components:
+- **A. Resource Management:** Register resources with stable IDs, titles, project IDs, source types, source references, and metadata. Support Markdown, text, code, documents. Preserve source provenance, avoid duplicate ingestion, normalize documents when appropriate, and track processing status.
+- **B. Memory Engine:** Extract reusable knowledge across categories (`decision`, `bug_fix`, `lesson`, `convention`, `reference`, `task_outcome`). Validate model output before storage. Maintain evidence links to resource, chunk, and excerpt. Support status lifecycle (`suggested`, `approved`, `superseded`, `archived`) and relationships. Never invent citations or evidence.
+- **C. Smart Knowledge Management:** Store resources, chunks, memories, relationships, and metadata as distinct connected entities. Project-scoped filtering. Database as single source of truth. Simplest reliable search first (keyword/SQL); semantic search only if justified.
+- **D. Context Engine:** Construct bounded context packages for tasks/questions containing objective, project background, decisions, solutions, bug fixes, conventions, dependencies, source references, verification steps, and missing info flags. Produce task-specific `context.md` for OpenCode and coding agents within token budgets.
+- **E. Context Transparency:** Enable users to understand why a memory was retrieved, supporting sources, project scope, status, influencing relationships, and insufficient evidence gaps.
+
+## Required End-to-End Workflow
+**Register resource → persist source → normalize/chunk content → propose structured memories → validate evidence → store memories and relationships → search relevant knowledge → generate task-specific context → verify output and provenance.**
+
+## Open-Source Framework Strategy
+Evaluate options: **Cognee**, **Mem0**, **Khoj**, and **MarkItDown** (for doc conversion). If framework integration slows delivery, use the existing database and implement a small, reliable memory/retrieval adapter (`fallback-provider.ts`). Do not install competing frameworks simultaneously.
+
+---
+
 # DevRelay Agent Rules
 
 Rules for AI agents working with DevRelay installed.
@@ -147,3 +173,14 @@ Rules for AI agents working with DevRelay installed.
   When drafting or referencing posts on DEV, use `{% agent_session <id_or_slug> %}` Liquid
   tags to embed sessions. A DEV post offer and a session offer at the same milestone
   belong in one message, not two.
+
+
+Read `AGENT_MEMORY_TEAM_BRAIN.md` completely. Inspect the existing repository and identify the current stack, database, APIs, and available LLM provider.
+
+My responsibility is the Team Brain memory system, smart knowledge management, and context engine.
+
+Evaluate Cognee first as the open-source memory and knowledge engine. Verify its current TypeScript SDK and integration requirements. Implement the smallest working vertical slice: accept a persisted resource, propose a source-linked memory, retrieve relevant evidence, and generate a task-specific `context.md`.
+
+Reuse existing infrastructure. Do not integrate multiple memory frameworks, create a second database unnecessarily, or build a custom vector database. If Cognee setup blocks progress, implement a simple database-backed fallback.
+
+Before editing, give me a concise implementation plan. Then implement the first working slice, run the available tests, and report the exact setup steps and any remaining blockers. Do not claim anything works unless you have verified it.

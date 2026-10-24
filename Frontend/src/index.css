@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --bg-app: #1e1e1e;
+  --bg-sidebar: #171717;
+  --bg-ribbon: #121212;
+  --bg-editor: #1e1e1e;
+  --bg-elevated: #262626;
+  --border: #2f2f2f;
+  --text: #dcddde;
+  --text-muted: #9a9a9a;
+  --accent: #8b7cf6;
+  --accent-2: #7f9cf5;
+  --link: #7f9cf5;
+  --link-unresolved: #b5656b;
+  --status-approved: #5bb98c;
+  --status-unreviewed: #d9a441;
+  --status-conflict: #e0676b;
+  --status-archived: #7a7a7a;
+  --focus-ring: #a9a2ff;
+  --radius: 8px;
+}
+
+:root[data-theme="light"] {
+  --bg-app: #f5f5f5;
+  --bg-sidebar: #ebebeb;
+  --bg-ribbon: #e0e0e0;
+  --bg-editor: #ffffff;
+  --bg-elevated: #f0f0f0;
+  --border: #d0d0d0;
+  --text: #1e1e1e;
+  --text-muted: #555555;
+  --accent: #6b5ce7;
+  --accent-2: #3b5bdb;
+  --link: #3b5bdb;
+  --link-unresolved: #b54a4f;
+  --status-approved: #2f8f5b;
+  --status-unreviewed: #b8860b;
+  --status-conflict: #c0392b;
+  --status-archived: #7a7a7a;
+  --focus-ring: #6b5ce7;
+  --radius: 8px;
+}
+
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--bg-app); color: var(--text); font-family: system-ui, -apple-system, sans-serif; }
+* { box-sizing: border-box; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.card { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); }

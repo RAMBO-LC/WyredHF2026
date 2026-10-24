@@ -232,6 +232,17 @@ program
     loop();
   });
 
+// 6. Serve Web UI on localhost
+program
+  .command('serve')
+  .description('Host the SharedBrain interactive Web UI on localhost')
+  .option('-p, --port <number>', 'Port number to listen on', '3000')
+  .action(async (options) => {
+    const port = parseInt(options.port, 10) || 3000;
+    const { startServer } = await import('../server/index.js');
+    await startServer(port);
+  });
+
 // Default action when no subcommand is specified
 program.action(async () => {
   // If no args provided, run demo or prompt

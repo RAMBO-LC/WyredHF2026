@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SharedBrain | Multi-Agent AI System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(17, 24, 39, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-cyan: #06b6d4;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-green: #10b981;
+      --accent-yellow: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(11, 15, 25, 0.8);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 1rem 2rem;
+    }
+
+    .header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+    }
+
+    .logo-text h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, #fff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-text p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.85rem;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-green);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--accent-green);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      padding: 0.55rem 1.1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      color: white;
+      box-shadow: 0 4px 14px rgba(6, 182, 212, 0.25);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: var(--card-border);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-danger {
+      background: rgba(244, 63, 94, 0.1);
+      border-color: rgba(244, 63, 94, 0.25);
+      color: var(--accent-rose);
+    }
+
+    .btn-danger:hover {
+      background: rgba(244, 63, 94, 0.2);
+    }
+
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+      flex: 1;
+      width: 100%;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      backdrop-filter: blur(8px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(to right, var(--accent-cyan), var(--accent-purple));
+    }
+
+    .stat-title {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: white;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-sub {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    /* Tabs */
+    .tab-bar {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 1.75rem;
+    }
+
+    .tab-btn {
+      padding: 0.75rem 1.5rem;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: inherit;
+    }
+
+    .tab-btn.active {
+      color: white;
+    }
+
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent-cyan);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Workflow Run Section */
+    .run-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .task-input {
+      flex: 1;
+      padding: 0.85rem 1.25rem;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      color: white;
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .task-input:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+    }
+
+    .preset-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .chip-label {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .preset-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 9999px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .preset-chip:hover {
+      background: rgba(6, 182, 212, 0.1);
+      border-color: var(--accent-cyan);
+      color: white;
+    }
+
+    /* Agent Stepper */
+    .pipeline-stepper {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      align-items: center;
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .agent-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .agent-card.running {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .agent-card.done {
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    .agent-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .agent-identity {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .agent-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .avatar-researcher { background: rgba(59, 130, 246, 0.2); }
+    .avatar-analyst { background: rgba(139, 92, 246, 0.2); }
+    .avatar-writer { background: rgba(16, 185, 129, 0.2); }
+
+    .agent-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .agent-badge {
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+    }
+
+    .agent-role {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .agent-metrics {
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .handoff-arrow {
+      color: var(--accent-yellow);
+      font-size: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .handoff-arrow span {
+      font-size: 0.65rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    /* Live Execution Stream Box */
+    .stream-box {
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      margin-bottom: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .stream-item {
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      border-left: 3px solid transparent;
+      background: rgba(255, 255, 255, 0.02);
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stream-item.researcher { border-color: var(--accent-blue); }
+    .stream-item.analyst { border-color: var(--accent-purple); }
+    .stream-item.writer { border-color: var(--accent-green); }
+    .stream-item.handoff { border-color: var(--accent-yellow); }
+    .stream-item.memory { border-color: var(--accent-cyan); }
+
+    /* Final Result Box */
+    .result-box {
+      background: var(--card-bg);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 16px;
+      padding: 1.75rem;
+      display: none;
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 1rem;
+    }
+
+    .result-content {
+      line-height: 1.7;
+      white-space: pre-wrap;
+      font-size: 0.95rem;
+    }
+
+    /* Memory Explorer Tab */
+    .memory-filter-bar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .memory-search {
+      flex: 1;
+      min-width: 250px;
+      padding: 0.75rem 1rem;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: white;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .memory-search:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .memory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 1rem;
+    }
+
+    .memory-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      transition: all 0.2s ease;
+    }
+
+    .memory-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .memory-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .memory-type {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .type-finding { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+    .type-insight { background: rgba(139, 92, 246, 0.15); color: var(--accent-purple); }
+    .type-summary { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+    .type-fact { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); }
+
+    .memory-agent {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .memory-content {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: var(--text-main);
+    }
+
+    .memory-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: auto;
+    }
+
+    .memory-tag {
+      font-size: 0.68rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      padding: 0.15rem 0.4rem;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Ask Tab */
+    .ask-box {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .chat-history {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      min-height: 350px;
+      max-height: 550px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .chat-bubble {
+      padding: 1rem 1.25rem;
+      border-radius: 12px;
+      line-height: 1.6;
+      font-size: 0.92rem;
+      max-width: 88%;
+    }
+
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      color: white;
+    }
+
+    .chat-bubble.brain {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      white-space: pre-wrap;
+    }
+
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 1.25rem 2rem;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="logo-group">
+        <div class="logo-icon">🧠</div>
+        <div class="logo-text">
+          <h1>SharedBrain</h1>
+          <p>Persistent SQLite Multi-Agent Collective</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="status-badge">
+          <div class="status-dot"></div>
+          <span>LOCAL PERSISTENCE (WAL ACTIVE)</span>
+        </div>
+        <button class="btn btn-outline" onclick="loadStats(); loadMemories();">
+          🔄 Refresh
+        </button>
+        <button class="btn btn-danger" onclick="clearBrain();">
+          🗑️ Clear Brain
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Stats Bar -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-title">Total Memories Saved</div>
+        <div class="stat-value" id="statTotalCount">--</div>
+        <div class="stat-sub">Across all application runs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">SQLite Database Size</div>
+        <div class="stat-value" id="statDbSize">-- KB</div>
+        <div class="stat-sub">Zero cloud database fees</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Researcher Findings</div>
+        <div class="stat-value" id="statResearcherCount" style="color: var(--accent-blue);">--</div>
+        <div class="stat-sub">Empirical data points</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Analyst Insights</div>
+        <div class="stat-value" id="statAnalystCount" style="color: var(--accent-purple);">--</div>
+        <div class="stat-sub">Synthesized patterns</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Writer Summaries</div>
+        <div class="stat-value" id="statWriterCount" style="color: var(--accent-green);">--</div>
+        <div class="stat-sub">Executive deliverables</div>
+      </div>
+    </div>
+
+    <!-- Tab navigation -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('run')">🚀 Run Multi-Agent Task</button>
+      <button class="tab-btn" onclick="switchTab('explorer')">🧠 Brain Explorer (SQLite)</button>
+      <button class="tab-btn" onclick="switchTab('ask')">💬 Ask Across Sessions</button>
+    </div>
+
+    <!-- TAB 1: RUN TASK -->
+    <div id="tab-run" class="tab-content active">
+      <div class="run-box">
+        <div class="input-group">
+          <input 
+            type="text" 
+            id="taskPrompt" 
+            class="task-input" 
+            placeholder="Enter a task (e.g., 'Research benefits of multi-agent systems and write a short summary')..."
+            value="Research the benefits of multi-agent systems and write a short summary"
+          />
+          <button class="btn btn-primary" id="btnRun" onclick="runTask()">
+            ▶ Dispatch Agents
+          </button>
+        </div>
+        <div class="preset-chips">
+          <span class="chip-label">Quick Presets:</span>
+          <div class="preset-chip" onclick="setPreset('Research the benefits of multi-agent systems and write a short summary')">
+            Benefits of Multi-Agent Systems
+          </div>
+          <div class="preset-chip" onclick="setPreset('Analyze startup failure patterns and write recommendations')">
+            Startup Failure Analysis
+          </div>
+          <div class="preset-chip" onclick="setPreset('Investigate persistent SQLite memory vs cloud vector databases')">
+            SQLite vs Vector DBs
+          </div>
+          <div class="preset-chip" onclick="setPreset('Evaluate distributed consensus algorithms (Raft vs Paxos)')">
+            Distributed Consensus
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent Stepper -->
+      <div class="pipeline-stepper">
+        <div class="agent-card" id="cardResearcher">
+          <div class="agent-card-header">
+            <div class="agent-identity">
+              <div class="agent-avatar avatar-researcher">🔍</div>
+              <div class="agent-name">Researcher</div>
+            </div>
+            <div class="agent-badge" id="badgeResearcher">STANDBY</div>
+          </div>
+          <div class="agent-role">Gathers facts via web search & tools</div>
+          <div class="agent-metrics">
+            <span>Committed: <strong id="countResearcher">0</strong></span>
+            <span id="timeResearcher">-- ms</span>
+          </div>
+        </div>
+
+        <div class="handoff-arrow">
+          <span>Handoff</span>
+          ➔
+        </div>
+
+        <div class="agent-card" id="cardAnalyst">
+          <div class="agent-card-header">
+            <div class="agent-identity">
+              <div class="agent-avatar avatar-analyst">📊</div>
+              <div class="agent-name">Analyst</div>
+            </div>
+            <div class="agent-badge" id="badgeAnalyst">STANDBY</div>
+          </div>
+          <div class="agent-role">Evaluates findings & trade-offs</div>
+          <div class="agent-metrics">
+            <span>Committed: <strong id="countAnalyst">0</strong></span>
+            <span id="timeAnalyst">-- ms</span>
+          </div>
+        </div>
+
+        <div class="handoff-arrow">
+          <span>Handoff</span>
+          ➔
+        </div>
+
+        <div class="agent-card" id="cardWriter">
+          <div class="agent-card-header">
+            <div class="agent-identity">
+              <div class="agent-avatar avatar-writer">✍️</div>
+              <div class="agent-name">Writer</div>
+            </div>
+            <div class="agent-badge" id="badgeWriter">STANDBY</div>
+          </div>
+          <div class="agent-role">Crafts final executive deliverable</div>
+          <div class="agent-metrics">
+            <span>Committed: <strong id="countWriter">0</strong></span>
+            <span id="timeWriter">-- ms</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Execution Stream -->
+      <div class="stream-box" id="streamLog">
+        <div class="stream-item memory">
+          💡 Ready. Select or type a task above and click 'Dispatch Agents' to watch the multi-agent collective collaborate in real-time.
+        </div>
+      </div>
+
+      <!-- Final Result Box -->
+      <div class="result-box" id="resultBox">
+        <div class="result-header">
+          <div style="font-weight: 700; color: var(--accent-green); display: flex; align-items: center; gap: 0.5rem;">
+            <span>🎉 Final Deliverable</span>
+            <span style="font-size: 0.75rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;" id="resultStats"></span>
+          </div>
+          <button class="btn btn-outline" onclick="copyResult()">📋 Copy Markdown</button>
+        </div>
+        <div class="result-content" id="resultText"></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: BRAIN EXPLORER -->
+    <div id="tab-explorer" class="tab-content">
+      <div class="memory-filter-bar">
+        <input 
+          type="text" 
+          id="memorySearchInput" 
+          class="memory-search" 
+          placeholder="Search memories using SQLite FTS5 / keywords..."
+          oninput="handleMemorySearch(this.value)"
+        />
+        <button class="btn btn-outline" onclick="loadMemories()">All</button>
+        <button class="btn btn-outline" onclick="filterMemories('type', 'finding')">Findings</button>
+        <button class="btn btn-outline" onclick="filterMemories('type', 'insight')">Insights</button>
+        <button class="btn btn-outline" onclick="filterMemories('type', 'summary')">Summaries</button>
+      </div>
+
+      <div class="memory-grid" id="memoryGrid">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- TAB 3: ASK ACROSS SESSIONS -->
+    <div id="tab-ask" class="tab-content">
+      <div class="ask-box">
+        <div class="chat-history" id="chatHistory">
+          <div class="chat-bubble brain">
+            👋 Welcome to SharedBrain Q&A. Because memories are persistently saved into SQLite, you can query facts, insights, or findings established across any previous session. Try asking:
+            • "What did the analyst say about SQLite?"
+            • "What are the core benefits of multi-agent systems?"
+          </div>
+        </div>
+        <div class="input-group">
+          <input 
+            type="text" 
+            id="askInput" 
+            class="task-input" 
+            placeholder="Ask a question about prior team research..."
+            onkeydown="if(event.key === 'Enter') askBrain();"
+          />
+          <button class="btn btn-primary" onclick="askBrain()">Ask Brain</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    SharedBrain Multi-Agent Engine • Powered by better-sqlite3 (WAL Mode + FTS5) • Zero Docker • Zero Cloud Database Cost
+  </footer>
+
+  <script>
+    // Tab switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+
+      if (tabId === 'explorer') {
+        loadMemories();
+      }
+    }
+
+    function setPreset(text) {
+      document.getElementById('taskPrompt').value = text;
+    }
+
+    // Load Stats from SQLite
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/memories/stats');
+        const data = await res.json();
+        
+        document.getElementById('statTotalCount').innerText = data.totalCount || 0;
+        document.getElementById('statDbSize').innerText = ((data.dbSizeBytes || 0) / 1024).toFixed(1) + ' KB';
+        document.getElementById('statResearcherCount').innerText = data.byAgent?.researcher || 0;
+        document.getElementById('statAnalystCount').innerText = data.byAgent?.analyst || 0;
+        document.getElementById('statWriterCount').innerText = data.byAgent?.writer || 0;
+      } catch (err) {
+        console.error('Failed to load stats', err);
+      }
+    }
+
+    // Load and Render Memories
+    async function loadMemories(query = '', filter = {}) {
+      const grid = document.getElementById('memoryGrid');
+      grid.innerHTML = '<div style="color: var(--text-dim);">Loading memories from SQLite...</div>';
+
+      try {
+        let url = '/api/memories?limit=50';
+        if (query) url += `&query=${encodeURIComponent(query)}`;
+        if (filter.type) url += `&type=${encodeURIComponent(filter.type)}`;
+        if (filter.agent) url += `&agent=${encodeURIComponent(filter.agent)}`;
+
+        const res = await fetch(url);
+        const memories = await res.json();
+
+        if (memories.length === 0) {
+          grid.innerHTML = '<div style="color: var(--text-dim); grid-column: 1/-1;">No matching memories found in SQLite database.</div>';
+          return;
+        }
+
+        grid.innerHTML = memories.map(m => {
+          const typeClass = 'type-' + (m.type || 'finding');
+          const time = new Date(m.timestamp).toLocaleTimeString();
+          const tagsHtml = (m.tags || []).map(t => `<span class="memory-tag">#${t}</span>`).join('');
+
+          return `
+            <div class="memory-card">
+              <div class="memory-top">
+                <span class="memory-type ${typeClass}">${m.type}</span>
+                <span class="memory-agent">@${m.agent} • ${time}</span>
+              </div>
+              <div class="memory-content">${escapeHtml(m.content)}</div>
+              <div class="memory-tags">${tagsHtml}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        grid.innerHTML = `<div style="color: var(--accent-rose);">Error loading memories: ${err.message}</div>`;
+      }
+    }
+
+    let searchTimeout;
+    function handleMemorySearch(val) {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        loadMemories(val);
+      }, 250);
+    }
+
+    function filterMemories(key, val) {
+      loadMemories('', { [key]: val });
+    }
+
+    // Clear Brain
+    async function clearBrain() {
+      if (!confirm('Are you sure you want to clear all persistent memories and task history from SQLite?')) return;
+      try {
+        await fetch('/api/memories/clear', { method: 'POST' });
+        logStream('🗑️ All memories and task history wiped from SQLite.', 'memory');
+        loadStats();
+        loadMemories();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Run Task via SSE
+    let eventSource = null;
+
+    async function runTask() {
+      const task = document.getElementById('taskPrompt').value.trim();
+      if (!task) return alert('Please enter a task.');
+
+      const btnRun = document.getElementById('btnRun');
+      btnRun.disabled = true;
+      btnRun.innerText = '⏳ Agents Working...';
+
+      // Reset Stepper
+      resetStepper();
+      document.getElementById('resultBox').style.display = 'none';
+
+      logStream(`🎯 Task initialized: "${task}"`, 'memory');
+
+      try {
+        const response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task }),
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop();
+
+          for (const part of parts) {
+            handleSSEMessage(part);
+          }
+        }
+      } catch (err) {
+        logStream(`❌ Task failed: ${err.message}`, 'memory');
+      } finally {
+        btnRun.disabled = false;
+        btnRun.innerText = '▶ Dispatch Agents';
+        loadStats();
+      }
+    }
+
+    function handleSSEMessage(raw) {
+      const lines = raw.split('\n');
+      let event = 'message';
+      let dataStr = '';
+
+      for (const line of lines) {
+        if (line.startsWith('event: ')) event = line.slice(7).trim();
+        if (line.startsWith('data: ')) dataStr = line.slice(6).trim();
+      }
+
+      if (!dataStr) return;
+      let data = {};
+      try { data = JSON.parse(dataStr); } catch { return; }
+
+      switch (event) {
+        case 'task_start':
+          if (data.priorMemories?.length > 0) {
+            logStream(`🧠 SQLite Memory Recall: Found ${data.priorMemories.length} historical memories from past runs!`, 'memory');
+          }
+          break;
+
+        case 'agent_start':
+          setAgentActive(data.agent, data.role);
+          logStream(`🤖 Activated Agent: ${data.agent.toUpperCase()} (${data.role})`, data.agent.toLowerCase());
+          break;
+
+        case 'agent_thought':
+          if (data.thoughts) {
+            logStream(`💭 [${data.agent}] Internal Reasoning:\n${data.thoughts}`, data.agent.toLowerCase());
+          }
+          break;
+
+        case 'agent_complete':
+          setAgentDone(data.agent, data.executionTimeMs, data.memoriesCreated?.length || 0);
+          logStream(`✔ ${data.agent} finished in ${data.executionTimeMs}ms. Committed ${data.memoriesCreated?.length || 0} entries to SQLite.`, data.agent.toLowerCase());
+          loadStats();
+          break;
+
+        case 'handoff':
+          logStream(`⚡ HANDOFF: ${data.fromAgent} ──(passing ${data.memoryCount} SQLite memories)──> ${data.toAgent}`, 'handoff');
+          break;
+
+        case 'task_complete':
+          showFinalDeliverable(data.finalSummary, data.durationMs, data.totalMemoriesCreated);
+          break;
+
+        case 'error':
+          logStream(`❌ Error: ${data.message}`, 'memory');
+          break;
+      }
+    }
+
+    function setAgentActive(agent, role) {
+      const card = document.getElementById('card' + agent);
+      const badge = document.getElementById('badge' + agent);
+      if (card && badge) {
+        card.className = 'agent-card running';
+        badge.innerText = 'WORKING...';
+        badge.style.color = 'var(--accent-cyan)';
+      }
+    }
+
+    function setAgentDone(agent, timeMs, count) {
+      const card = document.getElementById('card' + agent);
+      const badge = document.getElementById('badge' + agent);
+      const timeSpan = document.getElementById('time' + agent);
+      const countSpan = document.getElementById('count' + agent);
+
+      if (card) card.className = 'agent-card done';
+      if (badge) {
+        badge.innerText = 'COMPLETED';
+        badge.style.color = 'var(--accent-green)';
+      }
+      if (timeSpan) timeSpan.innerText = timeMs + ' ms';
+      if (countSpan) countSpan.innerText = count;
+    }
+
+    function resetStepper() {
+      ['Researcher', 'Analyst', 'Writer'].forEach(a => {
+        const card = document.getElementById('card' + a);
+        const badge = document.getElementById('badge' + a);
+        const timeSpan = document.getElementById('time' + a);
+        const countSpan = document.getElementById('count' + a);
+        if (card) card.className = 'agent-card';
+        if (badge) {
+          badge.innerText = 'STANDBY';
+          badge.style.color = 'var(--text-muted)';
+        }
+        if (timeSpan) timeSpan.innerText = '-- ms';
+        if (countSpan) countSpan.innerText = '0';
+      });
+    }
+
+    function logStream(msg, type = 'memory') {
+      const stream = document.getElementById('streamLog');
+      const item = document.createElement('div');
+      item.className = 'stream-item ' + type;
+      item.innerText = msg;
+      stream.appendChild(item);
+      stream.scrollTop = stream.scrollHeight;
+    }
+
+    function showFinalDeliverable(summary, duration, count) {
+      const box = document.getElementById('resultBox');
+      const text = document.getElementById('resultText');
+      const stats = document.getElementById('resultStats');
+
+      box.style.display = 'block';
+      text.innerText = summary;
+      stats.innerText = `(${duration}ms • ${count} memories persisted to SQLite)`;
+      box.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function copyResult() {
+      const text = document.getElementById('resultText').innerText;
+      navigator.clipboard.writeText(text);
+      alert('Final deliverable copied to clipboard!');
+    }
+
+    // Ask Brain
+    async function askBrain() {
+      const input = document.getElementById('askInput');
+      const q = input.value.trim();
+      if (!q) return;
+
+      const history = document.getElementById('chatHistory');
+
+      // User bubble
+      const userBubble = document.createElement('div');
+      userBubble.className = 'chat-bubble user';
+      userBubble.innerText = q;
+      history.appendChild(userBubble);
+
+      input.value = '';
+      history.scrollTop = history.scrollHeight;
+
+      // Thinking bubble
+      const brainBubble = document.createElement('div');
+      brainBubble.className = 'chat-bubble brain';
+      brainBubble.innerText = '🧠 Recalling persistent memory from SQLite...';
+      history.appendChild(brainBubble);
+      history.scrollTop = history.scrollHeight;
+
+      try {
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q }),
+        });
+        const data = await res.json();
+        brainBubble.innerText = data.answer;
+      } catch (err) {
+        brainBubble.innerText = 'Error recalling from SharedBrain: ' + err.message;
+      }
+
+      history.scrollTop = history.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return (str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      loadStats();
+    });
+  </script>
+</body>
+</html>

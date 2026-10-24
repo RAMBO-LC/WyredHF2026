@@ -1,0 +1,42 @@
+{
+  "name": "shared-brain",
+  "version": "1.0.0",
+  "description": "A lightweight multi-agent system with persistent shared SQLite memory",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "sharedbrain": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx src/cli/index.ts",
+    "cli": "tsx src/cli/index.ts",
+    "demo": "tsx src/cli/index.ts demo",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "multi-agent",
+    "llm",
+    "sqlite",
+    "shared-memory",
+    "orchestrator",
+    "ai-agents"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "commander": "^15.0.0",
+    "dotenv": "^18.0.9",
+    "openai": "^7.43.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

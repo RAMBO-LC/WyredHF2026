@@ -1,0 +1,36 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "project-director",
+  "subagent_depth": 2,
+  "agent": {
+    "project-director": {
+      "mode": "primary",
+      "permission": {
+        "task": {
+          "*": "allow"
+        },
+        "shell": {
+          "*": "allow",
+          "git push*": "ask",
+          "git reset --hard*": "ask",
+          "git clean -fd*": "ask",
+          "rm -rf*": "ask",
+          "del /s*": "ask",
+          "rmdir /s*": "ask",
+          "supabase db reset*": "ask",
+          "prisma migrate reset*": "ask",
+          "npm publish*": "ask",
+          "pnpm publish*": "ask",
+          "terraform destroy*": "ask"
+        },
+        "edit": "allow",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    }
+  }
+}

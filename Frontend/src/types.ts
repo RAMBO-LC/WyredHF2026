@@ -1,5 +1,5 @@
 export type ItemType = 'memory' | 'resource' | 'chunk' | 'pack' | 'review' | 'thread' | 'message' | 'member' | 'agent' | 'mcp' | 'doc' | 'skill';
-export type MemoryKind = 'decision' | 'fact' | 'convention' | 'fix' | 'constraint' | 'note';
+export type MemoryKind = 'decision' | 'fact' | 'convention' | 'fix' | 'constraint' | 'note' | 'bug_fix' | 'lesson' | 'reference' | 'task_outcome';
 export type MemoryStatus = 'approved' | 'suggested' | 'superseded' | 'archived';
 
 export interface Memory {

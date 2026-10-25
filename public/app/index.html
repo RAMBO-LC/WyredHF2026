@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ask · SharedBrain</title>
+  <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+  <script>document.documentElement.dataset.theme = localStorage.getItem('sb-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');</script>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    body { overflow: hidden; }
+    .chat { display: flex; flex-direction: column; height: calc(100vh - var(--header-h)); }
+    .thread { flex: 1; overflow-y: auto; }
+    .thread-inner { max-width: 780px; margin: 0 auto; padding: 32px 24px 24px; }
+    .composer-wrap { border-top: 1px solid var(--border); background: var(--bg); }
+    .composer { max-width: 780px; margin: 0 auto; padding: 14px 24px 16px; }
+    .composer-box { display: flex; align-items: flex-end; gap: 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); padding: 8px 8px 8px 14px; background: var(--bg); transition: border-color 0.12s, box-shadow 0.12s; }
+    .composer-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .composer textarea { flex: 1; border: none; outline: none; resize: none; font: inherit; font-size: 15px; background: none; color: var(--text); max-height: 200px; padding: 5px 0; line-height: 1.5; }
+    .composer-hint { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-faint); margin-top: 7px; }
+
+    .welcome { padding: 48px 0 16px; }
+    .welcome h1 { font-size: 26px; margin-bottom: 6px; }
+    .welcome p { color: var(--text-muted); margin-bottom: 26px; }
+    .suggestions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .suggestion { text-align: left; font: inherit; font-size: 14px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; cursor: pointer; color: var(--text); }
+    .suggestion:hover { border-color: var(--border-strong); background: var(--bg-subtle); }
+    .suggestion small { display: block; color: var(--text-faint); font-size: 12px; margin-top: 3px; }
+
+    .exchange { margin-bottom: 36px; }
+    .question { font-size: 17px; font-weight: 600; margin-bottom: 14px; letter-spacing: -0.01em; }
+    .trace { border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 18px; font-size: 13px; }
+    .trace summary { list-style: none; cursor: pointer; padding: 9px 12px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .trace summary::-webkit-details-marker { display: none; }
+    .trace summary .chev { width: 14px; height: 14px; color: var(--text-faint); transition: transform 0.15s; flex-shrink: 0; }
+    .trace[open] summary .chev { transform: rotate(90deg); }
+    .step { display: inline-flex; align-items: center; gap: 6px; color: var(--text-faint); }
+    .step .ind { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--border-strong); }
+    .step.running { color: var(--text); }
+    .step.running .ind { border-color: var(--accent); border-top-color: transparent; animation: spin 0.7s linear infinite; }
+    .step.done { color: var(--text-muted); }
+    .step.done .ind { background: var(--ok); border-color: var(--ok); }
+    .step.stopped .ind { background: var(--warn); border-color: var(--warn); }
+    .step .ms { font-family: var(--mono); font-size: 11.5px; color: var(--text-faint); }
+    .trace-body { border-top: 1px solid var(--border); padding: 4px 12px 8px; }
+    .trace-row { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--border); }
+    .trace-row:last-child { border-bottom: none; }
+    .trace-row b { font-weight: 600; }
+    .trace-row .out { color: var(--text-muted); }
+
+    .answer { margin-bottom: 16px; }
+    .answer.refusal { border-left: 3px solid var(--warn); padding-left: 14px; }
+    .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12.5px; color: var(--text-faint); margin-bottom: 16px; }
+    .meta .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--border-strong); }
+    .meta button { margin-left: auto; }
+    .sources-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); margin-bottom: 8px; }
+    .sources { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .source { display: block; text-align: left; font: inherit; border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 11px; background: var(--bg); cursor: pointer; color: var(--text); transition: border-color 0.12s, background 0.12s; }
+    .source:hover, .source.flash { border-color: var(--accent); background: var(--bg-subtle); }
+    .source .t { font-size: 13px; font-weight: 600; display: flex; gap: 6px; }
+    .source .t .n { color: var(--accent); font-family: var(--mono); }
+    .source .h { font-size: 12px; color: var(--text-muted); margin: 1px 0 4px; }
+    .source .x { font-size: 12px; color: var(--text-faint); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .typing { color: var(--text-faint); font-size: 14px; display: flex; gap: 8px; align-items: center; }
+    .hist-time { font-size: 11.5px; color: var(--text-faint); margin-left: auto; flex-shrink: 0; }
+    .side-item .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .side-item .st { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+    .side-item .st.refused { background: var(--warn); }
+    @media (max-width: 700px) { .suggestions, .sources { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <button class="btn btn-primary" id="new-btn" style="width:100%"></button>
+        <input class="input" id="hist-filter" placeholder="Filter history">
+      </div>
+      <div class="sidebar-body" id="history"></div>
+    </aside>
+    <section class="chat">
+      <div class="thread" id="thread"><div class="thread-inner" id="thread-inner"></div></div>
+      <div class="composer-wrap">
+        <form class="composer" id="composer">
+          <div class="composer-box">
+            <textarea id="input" rows="1" placeholder="Ask a question about your knowledge base…" autofocus></textarea>
+            <button class="btn btn-primary" id="send" type="submit" title="Send (Enter)"></button>
+          </div>
+          <div class="composer-hint"><span><kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line</span><span id="model-hint"></span></div>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <script src="/assets/common.js"></script>
+  <script>
+    const { api, esc, md, icon, toast } = SB;
+    SB.mountHeader('app');
+
+    const threadEl = document.getElementById('thread');
+    const inner = document.getElementById('thread-inner');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    let busy = false;
+    let exchangeCounter = 0;
+    let historyItems = [];
+
+    document.getElementById('new-btn').innerHTML = `${icon('plus')} New question`;
+    sendBtn.innerHTML = icon('send');
+
+    SB.getSystem().then((sys) => {
+      document.getElementById('model-hint').textContent = sys ? `Answers by ${SB.providerLabel(sys.llm)}` : '';
+    });
+
+    const SUGGESTIONS = [
+      ['What are the rate limiting tiers?', 'Rate limiting and quotas'],
+      ['How do I roll back a SEV-1 incident?', 'Incident runbook'],
+      ['How are webhook signatures verified?', 'Webhook security'],
+      ['What is the capital of France?', 'Out of scope — watch it decline'],
+    ];
+
+    function renderWelcome() {
+      inner.innerHTML = `
+        <div class="welcome">
+          <h1>Ask your knowledge base</h1>
+          <p>Answers come only from your documents and cite where each fact came from. If nothing covers the question, SharedBrain says so.</p>
+          <div class="suggestions">
+            ${SUGGESTIONS.map(([q, h]) => `<button class="suggestion" data-q="${esc(q)}">${esc(q)}<small>${esc(h)}</small></button>`).join('')}
+          </div>
+        </div>`;
+      inner.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => ask(b.dataset.q)));
+    }
+
+    const STEPS = ['Researcher', 'Analyst', 'Writer', 'Critic'];
+
+    function createExchange(question) {
+      const id = ++exchangeCounter;
+      const el = document.createElement('div');
+      el.className = 'exchange';
+      el.innerHTML = `
+        <div class="question">${esc(question)}</div>
+        <details class="trace">
+          <summary>${icon('chevron', 'class="chev"')}${STEPS.map((s) => `<span class="step" data-step="${s}"><span class="ind"></span>${s}<span class="ms"></span></span>`).join('')}</summary>
+          <div class="trace-body"></div>
+        </details>
+        <div class="answer prose"><div class="typing"><span class="spinner"></span> Working…</div></div>
+        <div class="meta hidden"></div>
+        <div class="sources-wrap hidden"><div class="sources-title">Sources</div><div class="sources"></div></div>`;
+      inner.querySelector('.welcome')?.remove();
+      inner.appendChild(el);
+      return { id, el };
+    }
+
+    function setStep(ex, name, state, ms) {
+      const s = ex.el.querySelector(`[data-step="${name}"]`);
+      if (!s) return;
+      s.classList.remove('running', 'done', 'stopped');
+      s.classList.add(state);
+      if (ms != null) s.querySelector('.ms').textContent = `${ms} ms`;
+    }
+
+    function addTraceRow(ex, agent, role, output, ms) {
+      const row = document.createElement('div');
+      row.className = 'trace-row';
+      row.innerHTML = `<div><b>${esc(agent)}</b><div class="faint">${esc(role)}</div></div><div class="out">${esc(output)}</div><div class="mono faint">${ms != null ? ms + ' ms' : ''}</div>`;
+      ex.el.querySelector('.trace-body').appendChild(row);
+    }
+
+    function renderResult(ex, data) {
+      const answerEl = ex.el.querySelector('.answer');
+      const scope = `e${ex.id}-`;
+      answerEl.classList.toggle('refusal', !!data.isRefusal);
+      answerEl.innerHTML = md(data.finalSummary || data.summary || '', { citations: true, citeScope: scope });
+
+      const citations = data.citations || [];
+      const sourcesWrap = ex.el.querySelector('.sources-wrap');
+      if (citations.length) {
+        sourcesWrap.classList.remove('hidden');
+        sourcesWrap.querySelector('.sources').innerHTML = citations.map((c, i) => `
+          <button class="source" id="cite-${scope}${i + 1}" data-idx="${i}">
+            <div class="t"><span class="n">${i + 1}</span><span class="truncate">${esc(SB.cleanTitle(c.title))}</span></div>
+            <div class="h truncate">${esc(c.heading || '')}</div>
+            <div class="x">${esc(c.excerpt || '')}</div>
+          </button>`).join('');
+        sourcesWrap.querySelectorAll('.source').forEach((b) => b.addEventListener('click', () => openSource(citations[Number(b.dataset.idx)])));
+      }
+      answerEl.querySelectorAll('[data-cite]').forEach((a) => a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.getElementById(`cite-${scope}${a.dataset.cite}`);
+        if (!target) return;
+        target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        target.classList.add('flash');
+        setTimeout(() => target.classList.remove('flash'), 1200);
+      }));
+
+      const metaEl = ex.el.querySelector('.meta');
+      const parts = [];
+      if (data.isRefusal) parts.push('<span class="badge warn">Declined</span>');
+      else parts.push('<span class="badge ok">Answered</span>');
+      if (data.groundingModel && data.groundingModel !== 'guardrail') parts.push(`<span>${esc(data.groundingModel === 'local-extractive' ? 'Extractive (no LLM)' : data.groundingModel)}</span>`);
+      if (data.durationMs != null) parts.push(`<span>${data.durationMs} ms</span>`);
+      if (!data.isRefusal && data.groundingScore != null) parts.push(`<span title="Share of answer terms found in the sources">${Math.round(data.groundingScore * 100)}% grounded</span>`);
+      metaEl.innerHTML = parts.join('<span class="sep"></span>') + `<button class="btn btn-ghost btn-sm" data-copy>${icon('copy')} Copy</button>`;
+      metaEl.classList.remove('hidden');
+      metaEl.querySelector('[data-copy]').addEventListener('click', () => SB.copyText(data.finalSummary || data.summary || ''));
+    }
+
+    async function openSource(c) {
+      let doc = null;
+      if (c.doc_id) {
+        try { doc = await api(`/api/documents/${encodeURIComponent(c.doc_id)}`); } catch { doc = null; }
+      }
+      if (doc) {
+        SB.modal({
+          title: SB.cleanTitle(doc.title),
+          body: `<div class="row small muted" style="margin-bottom:14px"><span class="badge">${esc(doc.folder)}</span><span>Matched section: <b>${esc(c.heading)}</b></span></div><div class="prose">${md(doc.content)}</div>`,
+          actions: [{ label: 'Open in Knowledge', primary: true, onClick: () => { location.href = `/knowledge#${encodeURIComponent(doc.id)}`; } }],
+        });
+      } else {
+        SB.modal({ title: SB.cleanTitle(c.title), body: `<p class="small muted">${esc(c.heading)}</p><div class="prose"><p>${esc(c.excerpt)}</p></div>` });
+      }
+    }
+
+    async function ask(question) {
+      question = question.trim();
+      if (!question || busy) return;
+      busy = true;
+      sendBtn.disabled = true;
+      input.value = '';
+      autosize();
+      const ex = createExchange(question);
+      ex.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      try {
+        const res = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task: question }) });
+        if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error || `Request failed (${res.status})`);
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let completed = false;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split('\n\n');
+          buffer = events.pop();
+          for (const block of events) {
+            const ev = /^event: (.*)$/m.exec(block)?.[1];
+            const raw = /^data: (.*)$/m.exec(block)?.[1];
+            if (!ev || !raw) continue;
+            const data = JSON.parse(raw);
+            if (ev === 'agent_start' || ev === 'critic_start') setStep(ex, data.agent, 'running');
+            if (ev === 'agent_complete') {
+              const stopped = data.agent === 'Analyst' && /Declining/.test(data.output);
+              setStep(ex, data.agent, stopped ? 'stopped' : 'done', data.executionTimeMs);
+              addTraceRow(ex, data.agent, data.role, data.output, data.executionTimeMs);
+            }
+            if (ev === 'critic_complete') {
+              setStep(ex, 'Critic', 'done');
+              addTraceRow(ex, 'Critic', 'Grounding check', data.critique.feedback, null);
+            }
+            if (ev === 'task_complete') { completed = true; renderResult(ex, data); }
+            if (ev === 'error') throw new Error(data.message);
+          }
+        }
+        if (!completed) throw new Error('The stream ended before an answer was produced.');
+        loadHistory();
+      } catch (err) {
+        ex.el.querySelector('.answer').innerHTML = `<p style="color:var(--danger)">Something went wrong: ${esc(err.message)}</p>`;
+        toast(err.message, 'error');
+      } finally {
+        busy = false;
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    async function openHistory(id) {
+      try {
+        const run = await api(`/api/conversations/${encodeURIComponent(id)}`);
+        inner.innerHTML = '';
+        const ex = createExchange(run.task);
+        const m = run.metadata || {};
+        ex.el.querySelector('.trace').remove();
+        renderResult(ex, { summary: run.summary, citations: m.citations, isRefusal: run.status === 'refused' || m.isRefusal, groundingModel: m.groundingModel, groundingScore: m.groundingScore, durationMs: m.durationMs });
+        markActive(id);
+        history.replaceState(null, '', `#${id}`);
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    }
+
+    function markActive(id) {
+      document.querySelectorAll('#history .side-item').forEach((el) => el.classList.toggle('active', el.dataset.id === id));
+    }
+
+    function renderHistory() {
+      const filter = document.getElementById('hist-filter').value.trim().toLowerCase();
+      const groups = [['Today', 'today'], ['Yesterday', 'yesterday'], ['Earlier', 'previous7Days']];
+      const host = document.getElementById('history');
+      let html = '';
+      for (const [label, key] of groups) {
+        const items = (historyItems[key] || []).filter((it) => !filter || it.task.toLowerCase().includes(filter));
+        if (!items.length) continue;
+        html += `<div class="sidebar-section">${label}</div>`;
+        html += items.map((it) => `
+          <div class="side-item" data-id="${esc(it.id)}" title="${esc(it.task)}">
+            <span class="st ${it.status === 'refused' ? 'refused' : ''}"></span>
+            <span class="t">${esc(it.task)}</span>
+            <span class="del" data-del="${esc(it.id)}" title="Delete">${icon('x', 'width="14" height="14"')}</span>
+          </div>`).join('');
+      }
+      host.innerHTML = html || '<div class="empty small">No questions yet.</div>';
+      host.querySelectorAll('.side-item').forEach((el) => el.addEventListener('click', (e) => {
+        if (e.target.closest('[data-del]')) return;
+        openHistory(el.dataset.id);
+      }));
+      host.querySelectorAll('[data-del]').forEach((el) => el.addEventListener('click', async () => {
+        try {
+          await api(`/api/conversations/${encodeURIComponent(el.dataset.del)}`, { method: 'DELETE' });
+          loadHistory();
+        } catch (err) { toast(err.message, 'error'); }
+      }));
+      const current = location.hash.slice(1);
+      if (current) markActive(current);
+    }
+
+    async function loadHistory() {
+      try {
+        historyItems = await api('/api/chats');
+        renderHistory();
+      } catch (err) {
+        document.getElementById('history').innerHTML = `<div class="empty small">Couldn't load history.</div>`;
+      }
+    }
+
+    function autosize() {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+    }
+
+    input.addEventListener('input', autosize);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        ask(input.value);
+      }
+    });
+    document.getElementById('composer').addEventListener('submit', (e) => { e.preventDefault(); ask(input.value); });
+    document.getElementById('new-btn').addEventListener('click', () => {
+      history.replaceState(null, '', '/app');
+      markActive('');
+      renderWelcome();
+      input.focus();
+    });
+    document.getElementById('hist-filter').addEventListener('input', renderHistory);
+
+    renderWelcome();
+    loadHistory();
+    const params = new URLSearchParams(location.search);
+    if (params.get('q')) {
+      history.replaceState(null, '', '/app');
+      ask(params.get('q'));
+    } else if (location.hash.length > 1) {
+      openHistory(decodeURIComponent(location.hash.slice(1)));
+    }
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
-export type MemoryType = 'fact' | 'finding' | 'insight' | 'summary' | 'raw' | 'plan';
+export type MemoryType = 'fact' | 'finding' | 'insight' | 'summary' | 'raw' | 'plan' | 'critique';
 
-export type AgentRole = 'researcher' | 'analyst' | 'writer' | 'orchestrator' | 'user';
+export type AgentRole = 'researcher' | 'analyst' | 'writer' | 'critic' | 'orchestrator' | 'user';
 
 export interface MemoryEntry {
   id: string;
@@ -65,6 +65,14 @@ export interface AgentResult {
   executionTimeMs: number;
 }
 
+export interface CriticEvaluation {
+  score: number;
+  is_acceptable: boolean;
+  feedback: string;
+  missing_elements: string[];
+  attempt?: number;
+}
+
 export interface TaskHandoffEvent {
   fromAgent: string;
   toAgent: string;
@@ -80,4 +88,47 @@ export interface TaskResult {
   totalMemoriesCreated: number;
   durationMs: number;
   recalledPriorMemories: MemoryEntry[];
+  critique?: CriticEvaluation;
+  retryAttempts?: number;
 }
+
+export interface KnowledgeDocument {
+  id: string;
+  path: string;
+  title: string;
+  folder: string;
+  content: string;
+  tags: string[];
+  author: string;
+  updated_at: string;
+  pinned: boolean;
+  backlinksCount?: number;
+  outgoingCount?: number;
+}
+
+export interface DocumentLink {
+  source_id: string;
+  target_id: string;
+  context?: string;
+}
+
+export interface GraphNode {
+  id: string;
+  title: string;
+  folder: string;
+  tags: string[];
+  x?: number;
+  y?: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  context?: string;
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+

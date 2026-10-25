@@ -53,7 +53,7 @@ Guidelines:
 
     const tags = this.generateTags(task);
 
-    const summaryContent = `## 📑 Executive Summary: Multi-Agent Systems & Shared Persistent Memory
+    const summaryContent = `## Executive Summary: Multi-Agent Systems & Shared Persistent Memory
 
 ### 1. Overview
 Modern AI operations are rapidly transitioning from single prompt workflows to **collaborative multi-agent architectures**. While isolated LLM agents encounter severe amnesia between sessions and hallucinate under overloaded context windows, a **shared persistent memory architecture** (powered locally by SQLite) transforms disconnected agents into an enduring "company brain".

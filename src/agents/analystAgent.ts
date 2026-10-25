@@ -64,7 +64,7 @@ Guidelines:
       `Zero-Cloud Overhead Advantage: Embedded local storage (better-sqlite3) provides deterministic sub-millisecond read/writes, making it radically more cost-effective and secure for sensitive team and startup data than cloud vector databases.`,
     ];
 
-    const output = `### 📊 Analytical Synthesis: ${task}
+    const output = `### Analytical Synthesis: ${task}
 
 **Analysis Context**: Processed ${findingsReadCount} raw findings from SharedBrain storage.
 

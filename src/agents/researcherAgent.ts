@@ -65,7 +65,7 @@ ${priorContext}`;
       `Verification and Reduced Hallucinations: Decoupling discovery (Researcher) from synthesis (Writer) through an analytical intermediate phase (Analyst) acts as an inherent verification gate.`,
     ];
 
-    const output = `### 🔍 Research Dossier: ${task}
+    const output = `### Research Dossier: ${task}
 
 **Executive Scope**: Comprehensive investigation into the structural and practical dimensions of the requested subject.
 

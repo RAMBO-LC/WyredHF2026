@@ -8,6 +8,11 @@ import {
   MemoryStats,
   MemoryType,
   SearchOptions,
+  KnowledgeDocument,
+  DocumentLink,
+  GraphData,
+  GraphNode,
+  GraphEdge,
 } from '../types/index.js';
 
 export class SharedMemory {
@@ -31,10 +36,11 @@ export class SharedMemory {
     this.db.pragma('foreign_keys = ON');
 
     this.initSchema();
+    this.seedDefaultKnowledgeBase();
   }
 
   /**
-   * Initializes the core SQLite tables and FTS5 full-text index.
+   * Initializes the core SQLite tables, documents, backlinks, and FTS5 full-text index.
    */
   private initSchema(): void {
     // 1. Primary memories table
@@ -67,34 +73,39 @@ export class SharedMemory {
       );
 
       CREATE INDEX IF NOT EXISTS idx_task_runs_started_at ON task_runs(started_at DESC);
+
+      -- 3. Persistent Knowledge Base Documents
+      CREATE TABLE IF NOT EXISTS documents (
+        id TEXT PRIMARY KEY,
+        path TEXT UNIQUE NOT NULL,
+        title TEXT NOT NULL,
+        folder TEXT NOT NULL,
+        content TEXT NOT NULL,
+        tags TEXT NOT NULL,
+        author TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        pinned INTEGER DEFAULT 0
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_documents_folder ON documents(folder);
+      CREATE INDEX IF NOT EXISTS idx_documents_path ON documents(path);
+
+      -- 4. Document Links and Backlinks graph table
+      CREATE TABLE IF NOT EXISTS document_links (
+        source_id TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        context TEXT,
+        PRIMARY KEY (source_id, target_id)
+      );
     `);
+
 
     // 3. FTS5 Virtual Table for full-text keyword and semantic search
     try {
       this.db.exec(`
-        CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
-          id UNINDEXED,
-          content,
-          tags,
-          agent,
-          tokenize = 'porter'
-        );
-
-        -- Triggers to synchronize primary table with FTS index automatically
-        CREATE TRIGGER IF NOT EXISTS trg_memories_ai AFTER INSERT ON memories BEGIN
-          INSERT INTO memories_fts (id, content, tags, agent)
-          VALUES (new.id, new.content, new.tags, new.agent);
-        END;
-
-        CREATE TRIGGER IF NOT EXISTS trg_memories_ad AFTER DELETE ON memories BEGIN
-          DELETE FROM memories_fts WHERE id = old.id;
-        END;
-
-        CREATE TRIGGER IF NOT EXISTS trg_memories_au AFTER UPDATE ON memories BEGIN
-          DELETE FROM memories_fts WHERE id = old.id;
-          INSERT INTO memories_fts (id, content, tags, agent)
-          VALUES (new.id, new.content, new.tags, new.agent);
-        END;
+        DROP TRIGGER IF EXISTS trg_memories_ai;
+        DROP TRIGGER IF EXISTS trg_memories_ad;
+        DROP TRIGGER IF EXISTS trg_memories_au;
       `);
     } catch {
       // Fallback if FTS5 is not compiled in this sqlite build
@@ -462,6 +473,471 @@ export class SharedMemory {
     return rows.map((r) => this.mapRow(r));
   }
 
+  /**
+   * Seed default Knowledge Base documents and relationships from the design spec.
+   */
+  public seedDefaultKnowledgeBase(): void {
+    try {
+      const countStmt = this.db.prepare('SELECT COUNT(*) as c FROM documents');
+      const { c } = countStmt.get() as { c: number };
+      if (c > 0) return;
+
+      const docs = [
+        {
+          id: 'doc_team_preferences',
+          path: 'Team/Team Preferences.md',
+          title: 'Team Preferences.md',
+          folder: 'Team',
+          tags: ['team', 'workflow', 'conventions'],
+          author: 'Alex',
+          updated_at: '1h ago',
+          pinned: 0,
+          content: `# Team Preferences
+
+## Engineering Culture
+- **Async Communication**: Prefer structured written documentation in SharedBrain.
+- **Single Source of Truth**: Keep architecture decisions and specs recorded in persistent SQLite memory.
+- **Review Cadence**: All multi-agent research deliverables are peer-reviewed by the Critic agent before merging.
+
+## Stack Conventions
+- TypeScript 5+ with strict mode.
+- SQLite WAL mode for fast concurrency and persistence.
+- Zero heavy dependencies; focus on fast local developer experience.`,
+        },
+        {
+          id: 'doc_coding_standards',
+          path: 'Team/Coding Standards.md',
+          title: 'Coding Standards.md',
+          folder: 'Team',
+          tags: ['code-style', 'typescript', 'standards', 'task', 'backlink'],
+          author: 'Alex',
+          updated_at: 'Updated 3 days ago by Alex',
+          pinned: 0,
+          content: `# Coding Standards
+
+## Core Principles
+1. **Explicit Typings**: Avoid any wherever possible.
+2. **Modularity**: Agents must inherit from BaseAgent and implement execute().
+3. **Persistent Memory First**: Never lose state between agent handoffs. All facts, findings, insights, and critiques must be committed to SQLite tables.
+4. **Resilience**: Every agent workflow must support simulated fallbacks if API keys are unset.`,
+        },
+        {
+          id: 'doc_design_principles',
+          path: 'Team/Design Principles.md',
+          title: 'Design Principles.md',
+          folder: 'Team',
+          tags: ['design', 'ui', 'ux', 'system'],
+          author: 'Sarah',
+          updated_at: '2 days ago',
+          pinned: 0,
+          content: `# Design Principles
+
+- **Clarity over Complexity**: Every agent's status (Researcher, Analyst, Writer, Critic) must be obvious at a glance.
+- **Deep Sleek Dark Theme**: Rich dark surfaces (#0b0f19, #111827) with subtle neon purple/cyan accents.
+- **Visual Backlinks**: Interactive graph view connecting documents, decisions, and system requirements.
+- **Immediate Feedback**: Live streaming execution feeds with memory counters and critique badges.`,
+        },
+        {
+          id: 'doc_ai_team_dashboard',
+          path: 'Projects/AI Team Dashboard.md',
+          title: 'AI Team Dashboard.md',
+          folder: 'Projects',
+          tags: ['dashboard', 'multi-agent', 'sharedbrain', 'task'],
+          author: 'Alex',
+          updated_at: '2m ago',
+          pinned: 0,
+          content: `# AI Team Dashboard
+
+## Overview
+SharedBrain provides an interactive AI Team Dashboard where cross-functional agents collaborate on tasks with persistent SQLite shared memory.
+
+## Active Agents
+- **Researcher Agent**: Crawls data, queries tools, records facts in SQLite.
+- **Analyst Agent**: Reads findings, extracts key strategic insights.
+- **Writer Agent**: Compiles polished deliverables.
+- **Critic Agent**: Strict compliance scoring (1-10) with self-correction retry loops.`,
+        },
+        {
+          id: 'doc_project_requirements',
+          path: 'Projects/Project Requirements.md',
+          title: 'Project Requirements.md',
+          folder: 'Projects',
+          tags: ['hackathon', 'specs', 'requirements', 'task', 'backlink'],
+          author: 'Alex',
+          updated_at: 'Updated 3 days ago by Alex',
+          pinned: 0,
+          content: `# Project Requirements - SharedBrain
+
+## Objectives
+- Build a lightweight multi-agent AI system for a 12-hour hackathon.
+- Provide persistent team memory via better-sqlite3.
+- Implement full Critic evaluation loop with up to 2 retries.
+- Provide a high-fidelity Web UI with Chat Home, Knowledge Base, and interactive Graph View.`,
+        },
+        {
+          id: 'doc_architecture',
+          path: 'Projects/Architecture.md',
+          title: 'Architecture.md',
+          folder: 'Projects',
+          tags: ['#system-design', '#architecture', 'backlink'],
+          author: 'Alex',
+          updated_at: 'Updated 3 days ago by Alex',
+          pinned: 0,
+          content: `# Architecture Specification
+
+Sections: / statusfeed.im
+Created: Oct 12, 2026
+Tags: #system-design #architecture
+
+## System Architecture
+SharedBrain connects specialized AI agents to a centralized persistent SQLite database.
+
+\`\`\`
+User Task
+   ↓
+Orchestrator
+   ↓
+Researcher → Analyst → Writer
+   ↓
+Critic Agent (1-10 strict score)
+   ↓
+┌────────────────────────────┐
+│ Is the output acceptable?  │
+└────────────────────────────┘
+     ↓ Yes             ↓ No (attempt < 2)
+  Final Summary     Retry with Critic feedback
+\`\`\`
+
+## Memory Subsystem
+- **SQLite Engine**: better-sqlite3 in WAL mode.
+- **Schema**: memories, task_runs, documents, document_links, and FTS5 search.`,
+        },
+        {
+          id: 'doc_decisions',
+          path: 'Projects/Decisions.md',
+          title: 'Decisions.md',
+          folder: 'Projects',
+          tags: ['decisions', 'adr', 'sqlite'],
+          author: 'Alex',
+          updated_at: 'Updated 3 days ago by Alex',
+          pinned: 0,
+          content: `# Architectural Decision Records (ADRs)
+
+## ADR-001: SQLite as Shared Persistent Brain
+- **Status**: Accepted
+- **Context**: Agents lose context between sessions. We need zero-config local persistence.
+- **Decision**: Use SQLite with better-sqlite3 over external vector databases.
+- **Consequences**: Instant startup, offline portability, single-file backup.`,
+        },
+        {
+          id: 'doc_research_notes',
+          path: 'Knowledge/Research Notes.md',
+          title: 'Research Notes.md',
+          folder: 'Knowledge',
+          tags: ['ai-research', 'multi-agent', 'notes'],
+          author: 'Elena',
+          updated_at: '1h ago',
+          pinned: 0,
+          content: `# Research Notes - Multi-Agent Collaboration
+
+## Key Findings
+- Multi-agent decomposition reduces hallucination by 40% compared to single-shot prompts.
+- Shared memory acts as an immutable ledger preventing duplicated research work.
+- Self-critique loops dramatically raise deliverable quality for complex technical tasks.`,
+        },
+        {
+          id: 'doc_lessons_learned',
+          path: 'Knowledge/Lessons Learned.md',
+          title: 'Lessons Learned.md',
+          folder: 'Knowledge',
+          tags: ['postmortem', 'learnings', 'speed'],
+          author: 'Marcus',
+          updated_at: 'Yesterday',
+          pinned: 0,
+          content: `# Lessons Learned
+
+1. **Keep Prompts Role-Specific**: Overly broad prompts dilute agent focus.
+2. **Deterministic Fallbacks**: Crucial for hackathons to guarantee demos never crash if API limits are hit.
+3. **Graph Backlinks**: Enabling visual links between documents provides instant context.`,
+        },
+        {
+          id: 'doc_brand_design_system',
+          path: 'Team/Brand Design System v2.md',
+          title: 'Brand Design System v2.md',
+          folder: 'Team',
+          tags: ['brand', 'design-system', 'v2'],
+          author: 'Sarah',
+          updated_at: '3 hours ago',
+          pinned: 1,
+          content: `# Brand Design System v2
+
+## Visual Identity
+- Logo: Glowing neural icon with gradient cyan-to-purple.
+- Typography: Plus Jakarta Sans for UI headers, JetBrains Mono for agent logs & code.
+- Elevation: Subtle border glow rgba(255, 255, 255, 0.08) and dark glassmorphic cards.`,
+        },
+        {
+          id: 'doc_color_specs',
+          path: 'Team/Color specs (October 2026)',
+          title: 'Color specs (October 2026)',
+          folder: 'Team',
+          tags: ['colors', 'hsl', 'design-tokens'],
+          author: 'Sarah',
+          updated_at: '3 hours ago',
+          pinned: 1,
+          content: `# Color Specifications (October 2026)
+
+- Background: #0b0f19
+- Card Surfaces: #111827 / rgba(17, 24, 39, 0.85)
+- Neon Purple: #8b5cf6
+- Electric Cyan: #06b6d4
+- Emerald Green: #10b981
+- Crimson Rose: #f43f5e`,
+        },
+      ];
+
+      const insertDoc = this.db.prepare(`
+        INSERT OR REPLACE INTO documents (id, path, title, folder, content, tags, author, updated_at, pinned)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const d of docs) {
+        insertDoc.run(
+          d.id,
+          d.path,
+          d.title,
+          d.folder,
+          d.content,
+          JSON.stringify(d.tags),
+          d.author,
+          d.updated_at,
+          d.pinned
+        );
+      }
+
+      // Seed document links matching Screenshot 3 & 2
+      const links = [
+        { source: 'doc_decisions', target: 'doc_architecture', context: "Mention: 'based on the core Architecture...'" },
+        { source: 'doc_project_requirements', target: 'doc_architecture', context: "Mention: 'based on the core Architecture...'" },
+        { source: 'doc_research_notes', target: 'doc_architecture', context: "Mention: 'based on the core Architecture...'" },
+        { source: 'doc_architecture', target: 'doc_coding_standards', context: 'Specifies coding rules' },
+        { source: 'doc_architecture', target: 'doc_ai_team_dashboard', context: 'Drives team dashboard' },
+        { source: 'doc_coding_standards', target: 'doc_team_preferences', context: 'Adheres to team preferences' },
+        { source: 'doc_team_preferences', target: 'doc_design_principles', context: 'Aligns on design' },
+        { source: 'doc_design_principles', target: 'doc_architecture', context: 'Guides UI architecture' },
+        { source: 'doc_project_requirements', target: 'doc_coding_standards', context: 'Demands strict standards' },
+        { source: 'doc_research_notes', target: 'doc_lessons_learned', context: 'Summarizes learnings' },
+        { source: 'doc_lessons_learned', target: 'doc_architecture', context: 'Refines architecture' },
+        { source: 'doc_ai_team_dashboard', target: 'doc_project_requirements', context: 'Implements requirements' },
+      ];
+
+      const insertLink = this.db.prepare(`
+        INSERT OR REPLACE INTO document_links (source_id, target_id, context)
+        VALUES (?, ?, ?)
+      `);
+
+      for (const l of links) {
+        insertLink.run(l.source, l.target, l.context);
+      }
+    } catch {
+      // Ignore if table schema is currently updating
+    }
+  }
+
+  /**
+   * Returns all knowledge documents with backlinks and outgoing links counts.
+   */
+  public getDocuments(): KnowledgeDocument[] {
+    const stmt = this.db.prepare(`
+      SELECT d.*,
+        (SELECT COUNT(*) FROM document_links l WHERE l.target_id = d.id) as backlinksCount,
+        (SELECT COUNT(*) FROM document_links l WHERE l.source_id = d.id) as outgoingCount
+      FROM documents d
+      ORDER BY d.pinned DESC, d.folder ASC, d.title ASC
+    `);
+
+    const rows = stmt.all() as any[];
+    return rows.map((r) => ({
+      id: r.id,
+      path: r.path,
+      title: r.title,
+      folder: r.folder,
+      content: r.content,
+      tags: JSON.parse(r.tags || '[]'),
+      author: r.author,
+      updated_at: r.updated_at,
+      pinned: Boolean(r.pinned),
+      backlinksCount: r.backlinksCount || 0,
+      outgoingCount: r.outgoingCount || 0,
+    }));
+  }
+
+  /**
+   * Retrieves a single document with full backlinks (incoming) and outgoing links.
+   */
+  public getDocumentById(id: string): (KnowledgeDocument & {
+    backlinks: { id: string; title: string; context: string }[];
+    outgoing: { id: string; title: string; context: string }[];
+  }) | null {
+    const docStmt = this.db.prepare('SELECT * FROM documents WHERE id = ? OR path = ?');
+    const doc = docStmt.get(id, id) as any;
+    if (!doc) return null;
+
+    const backlinksStmt = this.db.prepare(`
+      SELECT d.id, d.title, l.context
+      FROM document_links l
+      JOIN documents d ON l.source_id = d.id
+      WHERE l.target_id = ?
+    `);
+    const backlinks = backlinksStmt.all(doc.id) as any[];
+
+    const outgoingStmt = this.db.prepare(`
+      SELECT d.id, d.title, l.context
+      FROM document_links l
+      JOIN documents d ON l.target_id = d.id
+      WHERE l.source_id = ?
+    `);
+    const outgoing = outgoingStmt.all(doc.id) as any[];
+
+    return {
+      id: doc.id,
+      path: doc.path,
+      title: doc.title,
+      folder: doc.folder,
+      content: doc.content,
+      tags: JSON.parse(doc.tags || '[]'),
+      author: doc.author,
+      updated_at: doc.updated_at,
+      pinned: Boolean(doc.pinned),
+      backlinksCount: backlinks.length,
+      outgoingCount: outgoing.length,
+      backlinks,
+      outgoing,
+    };
+  }
+
+  /**
+   * Creates or updates a document and updates links.
+   */
+  public storeDocument(doc: {
+    id?: string;
+    path: string;
+    title: string;
+    folder: string;
+    content: string;
+    tags?: string[];
+    author?: string;
+    pinned?: boolean;
+  }): KnowledgeDocument {
+    const id = doc.id || `doc_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const author = doc.author || 'User';
+    const updated_at = new Date().toISOString();
+    const tagsJson = JSON.stringify(doc.tags || []);
+    const pinned = doc.pinned ? 1 : 0;
+
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO documents (id, path, title, folder, content, tags, author, updated_at, pinned)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(id, doc.path, doc.title, doc.folder, doc.content, tagsJson, author, updated_at, pinned);
+
+    return {
+      id,
+      path: doc.path,
+      title: doc.title,
+      folder: doc.folder,
+      content: doc.content,
+      tags: doc.tags || [],
+      author,
+      updated_at,
+      pinned: Boolean(pinned),
+    };
+  }
+
+  /**
+   * Connects two documents in the knowledge graph.
+   */
+  public addDocumentLink(sourceId: string, targetId: string, context: string = 'Linked in knowledge graph'): void {
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO document_links (source_id, target_id, context)
+      VALUES (?, ?, ?)
+    `);
+    stmt.run(sourceId, targetId, context);
+  }
+
+  /**
+   * Removes a connection between two documents.
+   */
+  public removeDocumentLink(sourceId: string, targetId: string): void {
+    const stmt = this.db.prepare(`
+      DELETE FROM document_links
+      WHERE (source_id = ? AND target_id = ?) OR (source_id = ? AND target_id = ?)
+    `);
+    stmt.run(sourceId, targetId, targetId, sourceId);
+  }
+
+  /**
+   * Returns graph nodes and directed edges for the interactive Graph View.
+   */
+  public getGraphData(): GraphData {
+    const docs = this.getDocuments();
+
+    // Default 2D spatial coordinate layout corresponding to Screenshot 3
+    const positions: Record<string, { x: number; y: number }> = {
+      doc_architecture: { x: 500, y: 280 },
+      doc_coding_standards: { x: 340, y: 190 },
+      doc_team_preferences: { x: 400, y: 90 },
+      doc_design_principles: { x: 510, y: 130 },
+      doc_project_requirements: { x: 360, y: 270 },
+      doc_ai_team_dashboard: { x: 260, y: 310 },
+      doc_decisions: { x: 580, y: 330 },
+      doc_research_notes: { x: 350, y: 440 },
+      doc_lessons_learned: { x: 510, y: 440 },
+    };
+
+    const nodes: GraphNode[] = docs.map((d, index) => {
+      let x = 550;
+      let y = 380;
+      if (d.id === 'doc_superuser_agent') {
+        x = 550;
+        y = 380;
+      } else {
+        const nonRootDocs = docs.filter(item => item.id !== 'doc_superuser_agent');
+        const itemIdx = nonRootDocs.findIndex(item => item.id === d.id);
+        const angle = (itemIdx / (nonRootDocs.length || 1)) * Math.PI * 2;
+        let radius = 280;
+        switch (d.folder) {
+          case 'Agents': radius = 190; break;
+          case 'Projects': radius = 280; break;
+          case 'Knowledge': radius = 370; break;
+          case 'Security': radius = 450; break;
+          case 'Runbooks': radius = 530; break;
+          case 'Team': radius = 610; break;
+          default: radius = 320;
+        }
+        x = 550 + Math.cos(angle) * radius;
+        y = 380 + Math.sin(angle) * radius;
+      }
+      return {
+        id: d.id,
+        title: d.title.replace(/\.md$/, ''),
+        folder: d.folder,
+        tags: d.tags,
+        x,
+        y,
+      };
+    });
+
+    const edgesStmt = this.db.prepare(`
+      SELECT source_id as source, target_id as target, context
+      FROM document_links
+    `);
+    const edges = edgesStmt.all() as GraphEdge[];
+
+    return { nodes, edges };
+  }
+
   private mapRow(row: any): MemoryEntry {
     let tags: string[] = [];
     let metadata: Record<string, any> | undefined;
@@ -490,6 +966,8 @@ export class SharedMemory {
     };
   }
 }
+
+
 
 // Default singleton instance for app-wide access
 let defaultMemoryInstance: SharedMemory | null = null;

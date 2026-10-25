@@ -1,0 +1,42 @@
+[
+  {
+    "id": "eval_task_01",
+    "task": "Resolve database lock contention under concurrent write operations",
+    "category": "bug_fix",
+    "expected_subjects": ["system.database", "system.architecture"],
+    "expected_keywords": ["WAL", "lock contention", "PRAGMA journal_mode"],
+    "min_expected_matches": 1
+  },
+  {
+    "id": "eval_task_02",
+    "task": "Enforce project isolation and API key authorization for enterprise tenants",
+    "category": "security",
+    "expected_subjects": ["system.security", "system.invariants"],
+    "expected_keywords": ["Bearer", "SHA-256", "project", "isolation"],
+    "min_expected_matches": 1
+  },
+  {
+    "id": "eval_task_03",
+    "task": "Build reproducible context packs with token budget limits and anti-injection fencing",
+    "category": "feature",
+    "expected_subjects": ["system.retrieval", "system.invariants"],
+    "expected_keywords": ["context", "token", "budget", "fence"],
+    "min_expected_matches": 1
+  },
+  {
+    "id": "eval_task_04",
+    "task": "Standardize TypeScript type safety across agent tools and orchestrator",
+    "category": "convention",
+    "expected_subjects": ["system.coding_standards", "system.conventions"],
+    "expected_keywords": ["TypeScript", "interfaces", "strict"],
+    "min_expected_matches": 1
+  },
+  {
+    "id": "eval_task_05",
+    "task": "Verify that no memory candidate is persisted without verbatim evidence excerpts",
+    "category": "constraint",
+    "expected_subjects": ["system.invariants", "system.evidence"],
+    "expected_keywords": ["verbatim", "evidence", "excerpt"],
+    "min_expected_matches": 1
+  }
+]

@@ -1,0 +1,39 @@
+services:
+  sharedbrain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sharedbrain-core
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_PATH=/app/data/shared_brain.db
+      - DATA_INCOMING_DIR=/app/data/incoming
+      - DATA_PROCESSED_DIR=/app/data/processed
+      - OLLAMA_ENDPOINT=http://ollama:11434/api/generate
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Optional local LLM extractor container
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sharedbrain-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    profiles:
+      - with-llm
+
+volumes:
+  ollama_data:

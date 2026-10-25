@@ -29,11 +29,15 @@ function setupOrchestratorUI(): Orchestrator {
     onAgentThought: (agent, thoughts) => UI.printAgentThoughts(agent, thoughts),
     onAgentComplete: (result) => UI.printAgentComplete(result),
     onHandoff: (from, to, count) => UI.printHandoff(from, to, count),
+    onCriticStart: (agent, role, attempt) => UI.printCriticStart(agent, role, attempt),
+    onCriticComplete: (evalResult, attempt) => UI.printCriticEvaluation(evalResult, attempt),
+    onRetryAttempt: (attempt, maxRetries, feedback) => UI.printRetryAttempt(attempt, maxRetries, feedback),
     onTaskComplete: (result) => UI.printFinalResult(result),
   });
 
   return orchestrator;
 }
+
 
 program
   .name('sharedbrain')
@@ -50,7 +54,7 @@ program
 
     if (!task) {
       const rl = createInteractivePrompt();
-      task = await promptUser(rl, pc.cyan('👉 Enter your task for the agent team: '));
+      task = await promptUser(rl, pc.cyan('Enter your task for the agent team: '));
       rl.close();
     }
 
@@ -69,7 +73,7 @@ program
   .description('Run end-to-end multi-agent demo showing research, analysis, writing, and memory persistence')
   .action(async () => {
     UI.printBanner();
-    console.log(pc.bold(pc.magenta('🚀 STARTING SHARED-BRAIN LIVE DEMO\n')));
+    console.log(pc.bold(pc.magenta('STARTING SHARED-BRAIN LIVE DEMO\n')));
     console.log(pc.white('This demo will showcase:'));
     console.log(pc.white('1. Researcher gathers findings and commits them to SQLite memory'));
     console.log(pc.white('2. Analyst reads SQLite memory and produces strategic insights'));
@@ -83,17 +87,17 @@ program
     await orchestrator.runTask(demoTask);
 
     // Step 2: Show persistence by recalling from SQLite
-    console.log(pc.bold(pc.cyan('🔄 VERIFYING PERSISTENT MEMORY RECALL (Simulating new session query):')));
+    console.log(pc.bold(pc.cyan('VERIFYING PERSISTENT MEMORY RECALL (Simulating new session query):')));
     const memory = orchestrator.getMemory();
     const stats = memory.getStats();
     UI.printMemoryStats(stats);
 
     const followUpQuery = 'benefits of multi-agent systems';
-    console.log(pc.yellow(`🔍 Querying SharedBrain across sessions for: "${followUpQuery}"...\n`));
+    console.log(pc.yellow(`Querying SharedBrain across sessions for: "${followUpQuery}"...\n`));
     const recallResult = await orchestrator.answerWithMemory(followUpQuery);
     console.log(recallResult.answer);
 
-    console.log(pc.bold(pc.green('\n✅ DEMO COMPLETE: Multi-agent collaboration + SQLite memory persistence verified!')));
+    console.log(pc.bold(pc.green('\nDEMO COMPLETE: Multi-agent collaboration + SQLite memory persistence verified!')));
   });
 
 // 3. Ask / Query Memory command
@@ -121,7 +125,7 @@ memoryCmd
     const limit = parseInt(options.limit, 10) || 10;
     const entries = memory.getRecent(limit);
 
-    console.log(pc.bold(pc.cyan(`📋 Most Recent ${entries.length} Memories in SQLite:\n`)));
+    console.log(pc.bold(pc.cyan(`Most Recent ${entries.length} Memories in SQLite:\n`)));
     if (entries.length === 0) {
       console.log(pc.dim('SharedBrain is currently empty. Run a task to generate memories!'));
       return;
@@ -132,7 +136,7 @@ memoryCmd
       console.log(`[${idx + 1}] ${pc.magenta(m.type.toUpperCase())} by ${pc.yellow(m.agent)} at ${pc.dim(time)}`);
       console.log(`    ${m.content}`);
       if (m.tags.length > 0) {
-        console.log(`    🏷️  Tags: ${pc.cyan(m.tags.join(', '))}`);
+        console.log(`    Tags: ${pc.cyan(m.tags.join(', '))}`);
       }
       console.log('');
     });
@@ -147,7 +151,7 @@ memoryCmd
     const memory = getSharedMemory(config.databasePath);
     const results = memory.recall(query, 10);
 
-    console.log(pc.bold(pc.cyan(`🔍 Search Results for: "${query}" (${results.length} found):\n`)));
+    console.log(pc.bold(pc.cyan(`Search Results for: "${query}" (${results.length} found):\n`)));
     if (results.length === 0) {
       console.log(pc.dim(`No matching memories found for "${query}".`));
       return;
@@ -156,7 +160,7 @@ memoryCmd
     results.forEach((m, idx) => {
       console.log(`[${idx + 1}] [${pc.magenta(m.type.toUpperCase())}] from ${pc.yellow(m.agent)}:`);
       console.log(`    ${m.content}`);
-      console.log(`    🏷️  Tags: ${pc.cyan(m.tags.join(', '))}\n`);
+      console.log(`    Tags: ${pc.cyan(m.tags.join(', '))}\n`);
     });
   });
 
@@ -176,7 +180,7 @@ memoryCmd
     UI.printBanner();
     const memory = getSharedMemory(config.databasePath);
     memory.clear();
-    console.log(pc.green('✔ Persistent SQLite memories and task records cleared successfully.'));
+    console.log(pc.green('[OK] Persistent SQLite memories and task records cleared successfully.'));
   });
 
 // 5. Interactive REPL mode
@@ -249,7 +253,7 @@ program.action(async () => {
   UI.printBanner();
   console.log(pc.yellow('No command specified. Running interactive task mode.\n'));
   const rl = createInteractivePrompt();
-  const task = await promptUser(rl, pc.cyan('👉 Enter your task for the agent team: '));
+  const task = await promptUser(rl, pc.cyan('Enter your task for the agent team: '));
   rl.close();
 
   if (task) {

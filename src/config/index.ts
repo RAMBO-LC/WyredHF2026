@@ -3,7 +3,7 @@ import path from 'path';
 import OpenAI from 'openai';
 
 // Load environment variables from .env if present
-dotenv.config();
+dotenv.config({ quiet: true });
 
 export interface AppConfig {
   openaiApiKey?: string;

@@ -1,228 +1,226 @@
-# 🧠 SharedBrain
+<p align="center">
+  <img src="public/assets/logo.svg" width="80" height="80" alt="SharedBrain logo">
+</p>
 
-> A lightweight, local-first multi-agent AI collective where specialized agents collaborate seamlessly through a **persistent, shared SQLite memory layer**.
+<h1 align="center">SharedBrain</h1>
 
-[![Tests: Vitest](https://img.shields.io/badge/tests-15%20passed-brightgreen.svg)](file:///Users/tatvagnatandel/Documents/gemini-chat/LLM-AGENT/test)
-[![Runtime: Node.js](https://img.shields.io/badge/node-%3E%3D20-blue.svg)](https://nodejs.org)
-[![Storage: SQLite](https://img.shields.io/badge/storage-better--sqlite3%20WAL-orange.svg)](https://github.com/WiseLibs/better-sqlite3)
-[![License: MIT](https://img.shields.io/badge/license-MIT-purple.svg)](LICENSE)
+<p align="center">
+  <strong>The Local-First Persistent Memory Collective for Autonomous AI Agents</strong><br>
+  <em>Never amnesic. Completely cited. Honest about what it doesn't know.</em>
+</p>
 
----
-
-## 💡 The Core Problem
-
-Most AI agents today are **isolated** and **amnesic**:
-1. When a session terminates, the agent forgets every fact, finding, and decision it made.
-2. In typical multi-agent setups, agents pass monolithic context windows back and forth, leading to severe token bloat, context pollution, and hallucinations.
-3. Startups and teams lack a shared institutional memory that compounds over time.
-
-**SharedBrain solves this.** All specialized agents read from and write to a single, persistent **SQLite** database (`shared_brain.db`). Knowledge accumulated by one agent is immediately indexed and accessible to all other agents—both within the current task and across application restarts.
+<p align="center">
+  <a href="https://github.com/RAMBO-LC/WyredHF2026/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/Download-macOS%20Apple%20Silicon%20(DMG)-blueviolet?style=for-the-badge&logo=apple" alt="macOS DMG"></a>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/Quick%20Start-30%20Seconds-success?style=for-the-badge&logo=node.js" alt="Quick Start"></a>
+  <a href="#architecture"><img src="https://img.shields.io/badge/Memory-SQLite%20WAL%20%2B%20FTS5-orange?style=for-the-badge&logo=sqlite" alt="SQLite WAL"></a>
+  <a href="#license"><img src="https://img.shields.io/badge/License-MIT-purple?style=for-the-badge" alt="License"></a>
+</p>
 
 ---
 
-## 🏛️ High-Level Architecture
+## What is SharedBrain?
+
+Most AI agents today are **isolated and amnesic**: when a session closes, the agent forgets every decision, trade-off, and finding it made. Passing monolithic conversation logs between agents leads to **context bloat**, **hallucinations**, and **skyrocketing API bills**.
+
+**SharedBrain solves this.** It is an embedded multi-agent collective centered around a single, persistent **SQLite** database. A Researcher, Analyst, Writer, and Critic read from and commit to one synchronized brain. Every answer provides line-level citations, and when internal knowledge falls below a 50% coverage threshold, the system **honestly declines** instead of hallucinating.
 
 ```
-/src
-  /agents          → Specialized agent implementations
-    ├── baseAgent.ts        # Abstract BaseAgent with memory hooks & OpenAI tool-calling
-    ├── researcherAgent.ts  # Information gathering, web search, raw findings
-    ├── analystAgent.ts     # Deep synthesis, trade-off analysis, structural insights
-    └── writerAgent.ts      # Executive summaries, polished final deliverable
-  /memory          → Shared persistent SQLite memory layer
-    ├── sharedMemory.ts     # SQLite storage, FTS5 full-text search, transactions
-    └── index.ts
-  /orchestrator    → Coordinates workflow, handoffs, and lifecycle events
-    └── orchestrator.ts     # Routes tasks, triggers handoffs, logs events
-  /tools           → Shared tools for agents
-    ├── webSearch.ts        # Live web search (DuckDuckGo API + offline fallback)
-    └── memoryTools.ts      # memory_recall and memory_store tools
-  /cli             → Sleek terminal interface with colored progress & boxes
-    ├── ui.ts               # Terminal UI formatting with picocolors
-    └── index.ts            # CLI command runner (run, demo, ask, memory, interactive)
-  index.ts         → Programmatic entry point & SDK export
++------------------------------------------------------------------------+
+|                        SHARED PERSISTENT BRAIN                         |
+|                    (SQLite WAL + FTS5 BM25 Search)                     |
++--------------+-------------------+-------------------+-----------------+
+               |                   |                   |
+               v                   v                   v
+       [Researcher]        ->  [Analyst]       ->  [Writer]        ->  [Critic]
+     Headings & Search       Scope & Filter      Cited Summary     Grounding Audit
 ```
 
-### Multi-Agent Handoff Pipeline
+---
+
+## Key Highlights
+
+* **Zero Vector DB Dependencies:** Built on pure `better-sqlite3` with Write-Ahead Logging (WAL) and FTS5 BM25 search. Zero cloud vector bills, sub-millisecond retrieval.
+* **4-Agent Autonomous Collective:** Division of labor with specialized roles that hand off atomic findings instead of noisy chat logs.
+* **The 50% Anti-Hallucination Rule:** The Analyst audits source coverage against the question; if term coverage is under 50%, the system refuses to guess.
+* **Verbatim Line Citations:** Every claim is tied back to exact source document sections and byte offsets.
+* **Interactive Knowledge Graph:** Dynamic HTML5 Canvas force-directed graph visualizing document links (`[[wikilinks]]`) and memory clusters.
+* **Native macOS Desktop App:** Bundles its own Node.js runtime into an Apple Silicon `.dmg` with a background menu bar companion.
+* **Drop-In OpenAI Compatibility:** Exposes `POST /v1/chat/completions` so you can connect **Open WebUI**, **AnythingLLM**, or **Cursor** directly to SharedBrain.
+
+---
+
+## System Architecture
 
 ```mermaid
-flowchart LR
-    User([User Prompt]) --> Orch[Orchestrator]
+flowchart TD
+    User([User Prompt / Question]) --> Orch[Orchestrator]
     
-    subgraph MemoryLayer["Persistent Shared SQLite Brain (better-sqlite3)"]
-        FTS[FTS5 Full-Text Index]
-        DB[(shared_brain.db)]
+    subgraph Storage ["Persistent SQLite Brain (shared_brain.db)"]
+        WAL[SQLite WAL Engine]
+        FTS5[FTS5 Inverted Full-Text Index]
+        Memories[(Distilled Memories: Decisions, Constraints, Bug Fixes)]
+        Docs[(Source Documents & Notes)]
     end
+
+    Orch -->|1. FTS5 Heading Retrieval| R[Researcher Agent]
+    R -->|Live DuckDuckGo Web Search| Web[(Web Search API)]
+    R -->|2. Store Findings & Facts| Storage
     
-    Orch -.->|1. Recall Prior Knowledge| DB
-    Orch -->|2. Delegate Research| R[Researcher Agent]
-    R -->|Tool: web_search| Web[Web Search]
-    R -->|3. Store Findings| DB
+    Storage -->|3. Ingest Findings| A[Analyst Agent]
+    A -->|4. Scope Check: Coverage < 50%?| Decline[Honest Decline]
+    A -->|5. Store Filtered Insights| Storage
     
-    DB -->|4. Ingest Findings| A[Analyst Agent]
-    A -->|5. Store Insights| DB
+    Storage -->|6. Ingest Insights| W[Writer Agent]
+    W -->|7. Generate Cited Draft| Storage
     
-    DB -->|6. Ingest Insights| W[Writer Agent]
-    W -->|7. Store Summary| DB
+    Storage -->|8. Audit Assertions| C[Critic Agent]
+    C -->|9. Precision Scoring| Storage
     
-    W -->|8. Final Report| User
+    W -->|10. Verified Answer with Citations| User
 ```
 
 ---
 
-## 🤖 Specialized Agents
+## The 4-Agent Pipeline
 
-| Agent | Role | Tools Used | Default Memory Output |
+| Agent | Responsibility | Core Mechanics | Output Memory Kind |
 | :--- | :--- | :--- | :--- |
-| **🔍 Researcher** | Gathers empirical facts, verifies information, explores external sources | `web_search`, `memory_recall` | `finding`, `fact` |
-| **📊 Analyst** | Ingests raw findings from SQLite, filters noise by ~40%, evaluates trade-offs | `memory_recall` | `insight` |
-| **✍️ Writer** | Reads synthesized insights, crafts executive reports and action plans | `memory_recall` | `summary` |
-| **🎼 Orchestrator** | Receives task, executes handoffs, recalls prior sessions, logs provenance | N/A | `plan`, task run record |
+| **Researcher** | Document retrieval & external search | Splits docs into heading chunks; runs BM25 queries & DuckDuckGo API | `finding`, `fact` |
+| **Analyst** | Scope validation & synthesis | Measures term overlap against question; filters noise by ~40% | `insight` |
+| **Writer** | Grounded deliverable synthesis | Formulates executive answers referencing exact section headers | `summary` |
+| **Critic** | Fact checking & verification | Audits what share of claims appear verbatim in the source evidence | `grounding_metric` |
 
 ---
 
-## 💾 Shared Persistent Memory Layer
+## Memory Distillation & Governance
 
-The memory system uses **`better-sqlite3`** with:
-- **Write-Ahead Logging (WAL)**: Sub-millisecond synchronous reads and atomic transactions.
-- **SQLite FTS5 Full-Text Search**: Automatic inverted index on `content`, `tags`, and `agent` with BM25 relevance ranking.
-- **SQLite Triggers**: `AFTER INSERT`, `AFTER UPDATE`, and `AFTER DELETE` triggers keep the search index synchronized in real time.
-- **Cross-Session Persistence**: Database is stored in `./data/shared_brain.db`. If you restart the terminal or re-run the CLI days later, all memories are preserved and recalled.
+Files imported or dropped into SharedBrain are automatically **distilled** into structured, verifiable atomic memory units:
 
-### Memory Schema
-
-```sql
-CREATE TABLE memories (
-  id TEXT PRIMARY KEY,
-  content TEXT NOT NULL,
-  type TEXT NOT NULL,        -- 'fact' | 'finding' | 'insight' | 'summary' | 'raw' | 'plan'
-  agent TEXT NOT NULL,       -- 'researcher' | 'analyst' | 'writer' | 'orchestrator' | 'user'
-  timestamp TEXT NOT NULL,   -- ISO 8601 string
-  tags TEXT NOT NULL,        -- JSON array of keyword strings
-  task_id TEXT,              -- UUID grouping memories for a specific run
-  metadata TEXT              -- JSON object for extra provenance/citations
-);
+```mermaid
+stateDiagram-v2
+    [*] --> suggested : Ingestion Extractor
+    suggested --> approved : Human Review / Verification
+    approved --> archived : Superseded / Deprecated
+    approved --> context_pack : Token-Budget Packing
+    context_pack --> [*] : Injected into External LLMs
 ```
 
+* **Decisions:** Architecture choices and trade-offs.
+* **Constraints:** Non-negotiable security or engineering rules (`must not`, `never`).
+* **Conventions:** Team coding standards and protocols.
+* **Bug Fixes:** Root causes and verified operational resolutions.
+
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
-### 1. Installation
+### Prerequisites
+* **Node.js 20+** (or use the standalone macOS `.dmg` below)
 
 ```bash
-# Clone the repository
-git clone <repo-url>
-cd LLM-AGENT
+# 1. Clone the repository
+git clone https://github.com/RAMBO-LC/WyredHF2026.git
+cd WyredHF2026
 
-# Install dependencies (Node.js 18+ required)
+# 2. Install dependencies
 npm install
+
+# 3. Start the server
+npm run serve
 ```
 
-### 2. Configuration (Optional)
-
-Create a `.env` file if you want to use OpenAI or an OpenAI-compatible provider:
-
-```bash
-cp .env.example .env
-```
-
-```env
-# Optional: Set your OpenAI API key
-OPENAI_API_KEY=sk-...
-
-# Optional: Custom model or endpoint (works with Ollama, Groq, OpenRouter)
-OPENAI_MODEL=gpt-4o
-# OPENAI_BASE_URL=https://api.openai.com/v1
-
-# SQLite database file path
-DATABASE_PATH=./data/shared_brain.db
-```
-
-> **Note for Hackathon Judges & Offline Demos**: If `OPENAI_API_KEY` is not set, SharedBrain automatically runs in **intelligent local mode** with deterministic agent reasoning and full SQLite persistence. You can run the entire system offline with zero configuration!
+Open the web interface in your browser (default port 3000). The first run automatically seeds a rich sample knowledge base. Try asking:
+* *"What are the rate limiting tiers?"*
+* *"How do I roll back a SEV-1 incident?"*
+* *"What is the capital of France?"* *(Correctly declined: outside knowledge scope)*
 
 ---
 
-## 🚀 Running the System
+## Native macOS App
 
-### Run the Live Demo
+We provide a self-contained macOS desktop app with an embedded runtime—no Node.js or terminal required.
 
-Run the automated end-to-end demonstration showcasing multi-agent handoffs, intermediate reasoning, SQLite commits, and cross-session memory recall:
+<p align="left">
+  <a href="https://github.com/RAMBO-LC/WyredHF2026/releases/download/v1.0.0/SharedBrain-1.0.0-arm64.dmg">
+    <img src="https://img.shields.io/badge/Download-SharedBrain--1.0.0--arm64.dmg-2ea44f?style=for-the-badge&logo=apple" alt="Download DMG">
+  </a>
+</p>
 
+1. Download [`SharedBrain-1.0.0-arm64.dmg`](https://github.com/RAMBO-LC/WyredHF2026/releases/download/v1.0.0/SharedBrain-1.0.0-arm64.dmg) from the Releases page.
+2. Open the DMG and drag **SharedBrain** into your **Applications** folder.
+3. Launch the app. A menu bar status item provides one-click access to the UI, data directory, and watched incoming folder.
+
+---
+
+## API & External Integrations
+
+### Ingest Documents
 ```bash
-npm run demo
+curl -s http://127.0.0.1:3000/api/ingest -H 'Content-Type: application/json' \
+  -d '{"title":"Security Policy","content":"# Security Policy\nRaw credit card numbers must never be logged."}'
 ```
 
-### Run a Custom Task
-
-Dispatch any task to the multi-agent collective:
-
+### Ask Grounded Questions
 ```bash
-npm run cli -- run "Investigate the trade-offs of microservices vs monoliths"
+curl -s http://127.0.0.1:3000/api/ask -H 'Content-Type: application/json' \
+  -d '{"question":"Can we log credit card numbers?"}'
 ```
 
-Or run interactively:
+### OpenAI-Compatible Gateway (`/v1/chat/completions`)
+Connect tools like **Open WebUI**, **Cursor**, or custom Python agents by pointing `base_url` to SharedBrain:
 
-```bash
-npm start
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://127.0.0.1:3000/v1",
+    api_key="sb_local_token"
+)
+
+response = client.chat.completions.create(
+    model="sharedbrain",
+    messages=[{"role": "user", "content": "Explain our deployment guidelines."}]
+)
+print(response.choices[0].message.content)
 ```
 
-### Recall Knowledge Across Sessions (`ask`)
+---
 
-Demonstrate that memories persist across application restarts by asking a question about previous work:
+## Command-Line Interface (CLI)
 
-```bash
-npm run cli -- ask "What did the analyst say about SQLite?"
-```
-
-### Inspect the Persistent Memory
+SharedBrain includes a full terminal suite with ANSI-colored streaming boxes:
 
 ```bash
-# View database statistics (total count, breakdown by agent, file size)
+# Ask an instant cited question
+npm run cli -- ask "How do webhook retries work?"
+
+# Run a full multi-agent collaborative investigation
+npm run cli -- run "Compare SQLite WAL vs Postgres for local edge caching"
+
+# Inspect database memory count, disk size, and agent contributions
 npm run cli -- memory stats
 
-# List recent memories saved in SQLite
-npm run cli -- memory list
+# Full-text search across all stored memories
+npm run cli -- memory search "circuit breaker"
 
-# Search memories using SQLite FTS5 full-text search
-npm run cli -- memory search "multi-agent"
-
-# Clear database for a clean start
-npm run cli -- memory clear
-```
-
-### Interactive REPL Mode
-
-Launch the interactive shell to continuously submit tasks, ask questions, and query the collective brain:
-
-```bash
+# Launch interactive REPL session
 npm run cli -- interactive
 ```
 
 ---
 
-## 🧪 Testing
-
-Vitest test suite covering unit operations, database persistence across restarts, tool calling, and orchestrator lifecycle events:
+## Testing & Verification
 
 ```bash
-# Run all tests
-npm test
+npm test          # Run Vitest test suite across CRUD, tools, and agents
+npm run eval      # Run automated retrieval benchmark (Recall@5 & Precision@5)
+npm run accept    # Validate the 8 core memory-engine invariants
+npm run build     # Compile TypeScript to dist/
+docker compose up --build # Run fully containerized via Docker
 ```
-
-### Test Coverage Highlights:
-- **`test/memory.test.ts`**: SQLite CRUD, transactions, FTS5 recall, restart persistence, database size and statistics.
-- **`test/tools.test.ts`**: WebSearchTool live/offline queries, MemoryStoreTool, MemoryRecallTool.
-- **`test/agents.test.ts`**: Researcher, Analyst, and Writer specialized workflows and memory emissions.
-- **`test/orchestrator.test.ts`**: Multi-agent handoff pipeline, lifecycle hooks, and cross-session knowledge recall.
 
 ---
 
-## 🛠️ Tech Stack & Philosophy
+## License
 
-- **Runtime**: Node.js & TypeScript
-- **Memory Storage**: `better-sqlite3` with Write-Ahead Logging (WAL) and FTS5
-- **AI Compatibility**: OpenAI SDK (compatible with OpenAI, Ollama, Groq, OpenRouter)
-- **Terminal UI**: `picocolors` and `commander`
-- **Testing**: `vitest`
-- **Design Philosophy**: Zero Docker, zero cloud vector database bills, local-first speed, clean modular architecture.
+This project is licensed under the [MIT License](LICENSE).

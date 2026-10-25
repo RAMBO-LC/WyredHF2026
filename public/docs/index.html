@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Docs · SharedBrain</title>
+  <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+  <script>document.documentElement.dataset.theme = localStorage.getItem('sb-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');</script>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    .docs { display: grid; grid-template-columns: 240px minmax(0, 1fr); max-width: 1120px; margin: 0 auto; gap: 48px; padding: 0 24px; }
+    .toc { position: sticky; top: var(--header-h); align-self: start; height: calc(100vh - var(--header-h)); overflow-y: auto; padding: 32px 0; }
+    .toc a { display: block; font-size: 14px; color: var(--text-muted); padding: 4px 10px; border-left: 2px solid var(--border); }
+    .toc a:hover { color: var(--text); text-decoration: none; }
+    .toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 550; }
+    .toc .group { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; color: var(--text-faint); margin: 18px 0 6px; padding-left: 12px; }
+    .toc .group:first-child { margin-top: 0; }
+    article { padding: 36px 0 120px; max-width: 760px; }
+    article section { scroll-margin-top: calc(var(--header-h) + 16px); }
+    article h1 { font-size: 34px; letter-spacing: -0.02em; }
+    article .lead { font-size: 17px; color: var(--text-muted); }
+    article h2 { font-size: 23px; margin-top: 56px; padding-top: 8px; }
+    article h3 { font-size: 17px; margin-top: 28px; }
+    article p, article li { color: var(--text); }
+    article ul, article ol { padding-left: 1.3em; }
+    article li { margin-bottom: 4px; }
+    article table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0 20px; }
+    article th, article td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    article th { font-size: 12.5px; color: var(--text-muted); font-weight: 600; }
+    article td code { white-space: nowrap; }
+    .callout { border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--bg-subtle); border-radius: var(--radius); padding: 12px 14px; font-size: 14px; margin: 16px 0; }
+    .callout.warn { border-left-color: var(--warn); }
+    .method { font-family: var(--mono); font-size: 11.5px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--bg-muted); }
+    .method.get { color: var(--ok); } .method.post { color: var(--c2); } .method.delete { color: var(--danger); } .method.patch { color: var(--warn); }
+    @media (max-width: 860px) { .docs { grid-template-columns: 1fr; } .toc { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="docs">
+    <nav class="toc" id="toc">
+      <div class="group">Getting started</div>
+      <a href="#introduction">Introduction</a>
+      <a href="#quick-start">Quick start</a>
+      <a href="#mac-app">macOS app</a>
+      <a href="#configuration">Configuration</a>
+      <div class="group">Guides</div>
+      <a href="#adding-knowledge">Adding knowledge</a>
+      <a href="#answers">How answers work</a>
+      <a href="#memory">Memory model</a>
+      <a href="#context-packs">Context packs</a>
+      <div class="group">Reference</div>
+      <a href="#api">HTTP API</a>
+      <a href="#openai-proxy">OpenAI-compatible proxy</a>
+      <a href="#cli">CLI</a>
+      <a href="#docker">Docker</a>
+      <a href="#development">Development</a>
+      <a href="#troubleshooting">Troubleshooting</a>
+    </nav>
+
+    <article>
+      <section id="introduction">
+        <h1>SharedBrain documentation</h1>
+        <p class="lead">SharedBrain is a local-first knowledge base with a multi-agent answer pipeline. Specialized agents share one persistent SQLite memory, answers cite the sections they came from, and questions the knowledge base can't support are declined.</p>
+        <p>It is a single Node.js process with no external services. The web UI, the HTTP API, a file-drop ingester and a CLI all run on top of the same database file.</p>
+        <ul>
+          <li><a href="/app">Ask</a> — ask questions and watch the agent pipeline run.</li>
+          <li><a href="/knowledge">Knowledge</a> — browse, write, and import documents.</li>
+          <li><a href="/graph">Graph</a> — explore how documents link together.</li>
+          <li><a href="/console">Console</a> — review memories, build context packs, back up data.</li>
+        </ul>
+      </section>
+
+      <section id="quick-start">
+        <h2>Quick start</h2>
+        <p>Requires <b>Node.js 20 or newer</b>. On macOS you can also use the <a href="#mac-app">desktop app</a>, which bundles everything.</p>
+<pre><code>npm install
+npm run serve
+# → SharedBrain Web UI running at: http://localhost:3000</code></pre>
+        <p>The first start creates <code>data/shared_brain.db</code> and seeds a sample knowledge base about a fictional API platform called NexusFlow, so there's something to ask about straight away. Try:</p>
+        <ul>
+          <li>“What are the rate limiting tiers?”</li>
+          <li>“How do I roll back a SEV-1 incident?”</li>
+          <li>“What is the capital of France?” — this one is declined, because nothing in the knowledge base covers it.</li>
+        </ul>
+        <p>No API key is needed. Without one, answers are extractive: the most relevant passages are quoted with citations. Add a model in <a href="#configuration">configuration</a> to get written answers.</p>
+      </section>
+
+      <section id="mac-app">
+        <h2>macOS app</h2>
+        <p><code>SharedBrain-1.0.0-arm64.dmg</code> contains a native app that bundles its own Node.js runtime, so nothing else needs to be installed. It runs on Apple silicon Macs with macOS 13 or later.</p>
+        <ol>
+          <li>Open the DMG and drag <b>SharedBrain</b> into <b>Applications</b>.</li>
+          <li>The app isn't notarized, so the first time, right-click it in Applications and choose <b>Open</b>, then confirm. If macOS still refuses, open <b>System Settings → Privacy &amp; Security</b> and click <b>Open Anyway</b>.</li>
+          <li>The app starts the server on a free local port and opens the UI in its own window.</li>
+        </ol>
+        <p>If the app was copied over AirDrop or downloaded and won't open at all, clear the quarantine flag once:</p>
+<pre><code>xattr -dr com.apple.quarantine /Applications/SharedBrain.app</code></pre>
+        <h3>Where data lives</h3>
+        <table>
+          <tr><th>What</th><th>Location</th></tr>
+          <tr><td>Database</td><td><code>~/Library/Application Support/SharedBrain/shared_brain.db</code></td></tr>
+          <tr><td>Drop folder</td><td><code>~/Library/Application Support/SharedBrain/incoming</code></td></tr>
+          <tr><td>Settings</td><td><code>~/Library/Application Support/SharedBrain/.env</code></td></tr>
+          <tr><td>Server log</td><td><code>~/Library/Logs/SharedBrain/server.log</code></td></tr>
+        </table>
+        <p>The <b>File</b> menu has shortcuts to open the drop folder, the data folder, and the settings file, and to open the UI in your regular browser. Changes to <code>.env</code> apply after <b>Restart Server</b>.</p>
+      </section>
+
+      <section id="configuration">
+        <h2>Configuration</h2>
+        <p>Settings are read from environment variables, or from a <code>.env</code> file in the working directory (copy <code>.env.example</code> to start).</p>
+        <table>
+          <tr><th>Variable</th><th>Default</th><th>Purpose</th></tr>
+          <tr><td><code>OPENAI_API_KEY</code></td><td>—</td><td>Enables written answers through any OpenAI-compatible API.</td></tr>
+          <tr><td><code>OPENAI_BASE_URL</code></td><td><code>https://api.openai.com/v1</code></td><td>Point at Ollama, LM Studio, OpenRouter, Groq, etc.</td></tr>
+          <tr><td><code>OPENAI_MODEL</code></td><td><code>gpt-4o</code></td><td>Model name sent to that API.</td></tr>
+          <tr><td><code>GEMINI_API_KEY</code></td><td>—</td><td>Use Google Gemini instead (only if no OpenAI key is set).</td></tr>
+          <tr><td><code>GEMINI_MODEL</code></td><td><code>gemini-2.5-flash</code></td><td>Gemini model name.</td></tr>
+          <tr><td><code>USE_MOCK_LLM</code></td><td><code>false</code></td><td>Force extractive answers even when a key is set.</td></tr>
+          <tr><td><code>DATABASE_PATH</code></td><td><code>./data/shared_brain.db</code></td><td>SQLite file location.</td></tr>
+          <tr><td><code>DATA_INCOMING_DIR</code></td><td><code>./data/incoming</code></td><td>Drop folder that is watched for new files.</td></tr>
+          <tr><td><code>DATA_PROCESSED_DIR</code></td><td><code>./data/processed</code></td><td>Where ingested files are moved.</td></tr>
+          <tr><td><code>PORT</code></td><td><code>3000</code></td><td>HTTP port. The next free port is used if it's taken.</td></tr>
+        </table>
+        <h3>Run fully offline with Ollama</h3>
+<pre><code>ollama pull llama3.1
+# .env
+OPENAI_API_KEY=ollama
+OPENAI_BASE_URL=http://localhost:11434/v1
+OPENAI_MODEL=llama3.1</code></pre>
+        <p>The active model is shown in the header of every page. If a model call fails, SharedBrain falls back to an extractive answer instead of erroring.</p>
+      </section>
+
+      <section id="adding-knowledge">
+        <h2>Adding knowledge</h2>
+        <p>There are four ways in. All of them make content searchable immediately.</p>
+        <ul>
+          <li><b>Write a document</b> on the <a href="/knowledge">Knowledge</a> page. Markdown is supported, and <code>[[Note title]]</code> links to other notes.</li>
+          <li><b>Import files</b> with the upload button on the Knowledge page, or drag files anywhere onto it.</li>
+          <li><b>Drop files</b> into the drop folder (<code>data/incoming</code>, or the app's folder on macOS). They're picked up within a few seconds and moved to <code>processed</code>.</li>
+          <li><b>Call the API</b>: <code>POST /api/ingest</code> with a title and content.</li>
+        </ul>
+        <p>Supported file types: <code>.md .markdown .txt .json .csv .log .yaml .yml .ts .js .py .sql</code>.</p>
+        <p>Imported and dropped files also go through <b>distillation</b>: lines that read like decisions (“we decided…”), constraints (“must not…”), conventions, and bug fixes become memories, each stored with the exact quote and byte offsets it came from.</p>
+      </section>
+
+      <section id="answers">
+        <h2>How answers work</h2>
+        <p>Every question runs through four stages. The Ask view streams each one with its measured duration.</p>
+        <table>
+          <tr><th>Agent</th><th>Stage</th><th>What it does</th></tr>
+          <tr><td>Researcher</td><td>Retrieval</td><td>Splits every document into heading sections and ranks them, along with ingested chunks, using BM25. Titles and headings are weighted higher. Related memories are ranked the same way.</td></tr>
+          <tr><td>Analyst</td><td>Scope check</td><td>Measures what share of the question's terms appear in the top passages. Below 50%, the question is declined.</td></tr>
+          <tr><td>Writer</td><td>Answer</td><td>With a model configured, writes an answer from the numbered passages only, citing them as [1], [2]. Without one, quotes the most relevant lines.</td></tr>
+          <tr><td>Critic</td><td>Grounding check</td><td>Reports the share of the answer's terms that appear in the sources, shown as “% grounded”.</td></tr>
+        </table>
+        <div class="callout">Declining is deliberate. A question about something the knowledge base doesn't contain gets a short explanation and a list of topics that <i>are</i> covered, never an invented answer.</div>
+      </section>
+
+      <section id="memory">
+        <h2>Memory model</h2>
+        <p>A memory is a short statement with a <b>kind</b> (decision, constraint, convention, bug_fix, lesson, reference), a <b>subject key</b>, a <b>status</b>, and one or more <b>evidence</b> records quoting the source.</p>
+        <p>Statuses move only through one transition function, with optimistic version checks:</p>
+<pre><code>suggested → approved | archived
+approved  → archived | superseded (requires an approved successor)</code></pre>
+        <p>The engine enforces eight invariants, reported by <code>GET /v1/health</code>:</p>
+        <ol>
+          <li>No memory without evidence.</li>
+          <li>Claims and evidence are stored separately.</li>
+          <li>Model output is untrusted until verified against a verbatim quote.</li>
+          <li>All status changes go through one transition function.</li>
+          <li>Feedback adjusts ranking but never rewrites memories.</li>
+          <li>Context packs are reproducible.</li>
+          <li>Projects are isolated from each other.</li>
+          <li>Extraction is idempotent.</li>
+        </ol>
+      </section>
+
+      <section id="context-packs">
+        <h2>Context packs</h2>
+        <p>A context pack is a token-budgeted bundle of approved memories, with evidence, selected for a query and rendered as Markdown. Use it to give another LLM or agent the relevant team knowledge without dumping whole documents. Build one in <a href="/console#packs">Console → Context packs</a> or via <code>POST /v1/context-packs</code>.</p>
+      </section>
+
+      <section id="api">
+        <h2>HTTP API</h2>
+        <p>All endpoints accept and return JSON. <code>/api/*</code> powers the web UI. <code>/v1/*</code> is the memory-engine API, scoped to a project. Without an <code>Authorization</code> header it uses the built-in local development key, so it works out of the box on localhost.</p>
+        <h3>Questions</h3>
+        <table>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/ask</code></td><td><code>{ question }</code> → <code>{ answer, citations, isRefusal, groundingScore, … }</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/tasks</code></td><td><code>{ task }</code> → Server-Sent Events: <code>agent_start</code>, <code>agent_complete</code>, <code>critic_complete</code>, <code>task_complete</code>, <code>done</code></td></tr>
+          <tr><td><span class="method get">GET</span></td><td><code>/api/conversations</code></td><td>Question history. <code>GET/DELETE /api/conversations/:id</code> for one.</td></tr>
+        </table>
+        <h3>Knowledge</h3>
+        <table>
+          <tr><td><span class="method get">GET</span></td><td><code>/api/documents</code></td><td>All documents.</td></tr>
+          <tr><td><span class="method get">GET</span></td><td><code>/api/documents/:id</code></td><td>One document with backlinks and outgoing links.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/documents</code></td><td><code>{ id?, title, folder, content, tags, pinned }</code> — create, or update when <code>id</code> is given.</td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/documents/:id</code></td><td>Delete a document and its links.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/ingest</code></td><td><code>{ title, content, folder? }</code> — store, chunk, and distill memories.</td></tr>
+          <tr><td><span class="method get">GET</span></td><td><code>/api/graph</code></td><td>Nodes and edges for the graph view.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/links</code></td><td><code>{ sourceId, targetId, context }</code> — link two documents.</td></tr>
+        </table>
+        <h3>System</h3>
+        <table>
+          <tr><td><span class="method get">GET</span></td><td><code>/api/system</code></td><td>Version, active model, storage paths.</td></tr>
+          <tr><td><span class="method get">GET</span></td><td><code>/api/ingest/stats</code></td><td>Counts of documents, chunks, memories, links.</td></tr>
+          <tr><td><span class="method get">GET</span></td><td><code>/api/export/database</code></td><td>Download a consistent SQLite backup.</td></tr>
+        </table>
+        <h3>Memory engine (<code>/v1</code>)</h3>
+        <table>
+          <tr><td><span class="method get">GET</span></td><td><code>/v1/memories</code></td><td>Filter with <code>status</code>, <code>kind</code>, <code>subjectKey</code>.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/v1/memories/:id/transitions</code></td><td><code>{ newStatus, expectedVersion }</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/v1/memories/:id/feedback</code></td><td>Record useful / outdated / worked / failed.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/v1/context-packs</code></td><td><code>{ query, budget }</code> → pack. <code>GET /v1/context-packs/:id/markdown</code> to render.</td></tr>
+          <tr><td><span class="method get">GET</span></td><td><code>/v1/review-items</code></td><td>Open review items. <code>POST …/:id/resolve</code> with <code>{ action }</code>.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/v1/resources</code></td><td>Add a raw resource; <code>/v1/extraction-runs</code> to extract from it.</td></tr>
+          <tr><td><span class="method get">GET</span></td><td><code>/v1/audit</code></td><td>Audit log of every change.</td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/v1/obsidian/export</code></td><td>Export memories as Markdown notes. <code>/v1/obsidian/import</code> to import.</td></tr>
+          <tr><td><span class="method get">GET</span></td><td><code>/v1/health</code></td><td>Table counts and invariant status.</td></tr>
+        </table>
+      </section>
+
+      <section id="openai-proxy">
+        <h2>OpenAI-compatible proxy</h2>
+        <p><code>POST /v1/chat/completions</code> accepts a standard chat request. SharedBrain builds a context pack for the latest user message and injects it into the system prompt. With a model configured, the request is forwarded upstream. Without one, it answers from the knowledge base directly, with sources.</p>
+<pre><code>from openai import OpenAI
+client = OpenAI(base_url="http://localhost:3000/v1", api_key="sb_live_demo_key_2026")
+reply = client.chat.completions.create(
+    model="sharedbrain-core",
+    messages=[{"role": "user", "content": "How are webhooks signed?"}],
+)</code></pre>
+        <p>This works with tools that accept a custom OpenAI base URL, such as AnythingLLM, Open WebUI, or Continue.</p>
+      </section>
+
+      <section id="cli">
+        <h2>CLI</h2>
+<pre><code>npm run cli -- ask "How do webhook retries work?"
+npm run cli -- run "Compare SQLite WAL and Postgres for an edge cache"
+npm run cli -- memory list --limit 20
+npm run cli -- memory search "rate limit"
+npm run cli -- memory stats
+npm run cli -- interactive
+npm run demo</code></pre>
+        <p><code>run</code> executes the full Researcher → Analyst → Writer → Critic workflow, and retries (up to twice) when the critic rejects the draft. Each agent stores what it learns in the shared database.</p>
+      </section>
+
+      <section id="docker">
+        <h2>Docker</h2>
+<pre><code>docker compose up --build
+# optional local model:
+docker compose --profile with-llm up --build</code></pre>
+        <p>Data is persisted in <code>./data</code> on the host.</p>
+      </section>
+
+      <section id="development">
+        <h2>Development</h2>
+<pre><code>npm test            # vitest
+npm run build       # tsc → dist/
+npm run eval        # retrieval evaluation set
+npm run app:dmg     # build the macOS app and DMG (macOS only)</code></pre>
+        <table>
+          <tr><th>Path</th><th>Contents</th></tr>
+          <tr><td><code>src/core</code></td><td>Database schema, retrieval, RAG engine, ingestion, transitions, context packs.</td></tr>
+          <tr><td><code>src/agents</code></td><td>Researcher, Analyst, Writer and Critic agents used by the CLI workflow.</td></tr>
+          <tr><td><code>src/server</code></td><td>Express server, <code>/api</code> routes and the <code>/v1</code> router.</td></tr>
+          <tr><td><code>public</code></td><td>The web UI. Plain HTML, CSS and JavaScript, no build step.</td></tr>
+          <tr><td><code>macos</code></td><td>Native Swift wrapper and the DMG build script.</td></tr>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>Troubleshooting</h2>
+        <h3>The server crashes on start with a segmentation fault</h3>
+        <p>The native SQLite module was built for a different Node.js version. Run <code>npm rebuild better-sqlite3</code>, or delete <code>node_modules</code> and run <code>npm install</code> again.</p>
+        <h3>Port 3000 is already in use</h3>
+        <p>The server automatically moves to the next free port and prints the URL. Set <code>PORT</code> to choose one.</p>
+        <h3>A question I expected to work was declined</h3>
+        <p>Fewer than half of its key terms appear in the knowledge base. Rephrase it with words the documents use, or add a document that covers the topic.</p>
+        <h3>The macOS app says it's damaged or can't be opened</h3>
+        <p>That's Gatekeeper reacting to an unsigned app copied from another Mac. Run <code>xattr -dr com.apple.quarantine /Applications/SharedBrain.app</code> once.</p>
+      </section>
+    </article>
+  </div>
+
+  <script src="/assets/common.js"></script>
+  <script>
+    SB.mountHeader('docs');
+    const links = [...document.querySelectorAll('#toc a')];
+    const sections = links.map((a) => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+    const spy = () => {
+      let current = sections[0];
+      for (const s of sections) if (s.getBoundingClientRect().top < 120) current = s;
+      links.forEach((a) => a.classList.toggle('active', a.getAttribute('href') === `#${current.id}`));
+    };
+    document.addEventListener('scroll', spy, { passive: true });
+    spy();
+  </script>
+</body>
+</html>

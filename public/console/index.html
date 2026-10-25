@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Console · SharedBrain</title>
+  <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+  <script>document.documentElement.dataset.theme = localStorage.getItem('sb-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');</script>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    .page { max-width: 1160px; margin: 0 auto; padding: 28px 28px 64px; }
+    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+    .page-head h1 { font-size: 24px; margin-bottom: 2px; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .kpi { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+    .kpi .n { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+    .kpi .l { font-size: 13px; color: var(--text-muted); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .bars { display: flex; flex-direction: column; gap: 7px; }
+    .bar-row { display: grid; grid-template-columns: 130px 1fr 40px; gap: 10px; align-items: center; font-size: 13px; }
+    .bar-row .track { height: 8px; background: var(--bg-muted); border-radius: 4px; overflow: hidden; }
+    .bar-row .fill { height: 100%; background: var(--accent); border-radius: 4px; }
+    .bar-row .v { text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    .kv { display: grid; grid-template-columns: 140px 1fr; gap: 8px 12px; font-size: 13.5px; }
+    .kv dt { color: var(--text-muted); }
+    .kv dd { margin: 0; font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+    .card h3 { font-size: 15px; margin-bottom: 14px; }
+    .filters { display: flex; gap: 8px; margin-bottom: 12px; }
+    .filters .input { max-width: 320px; }
+    .filters .select { width: auto; }
+    .table-wrap { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: auto; max-height: 64vh; }
+    .stmt { max-width: 560px; }
+    .ev { font-size: 12px; color: var(--text-faint); margin-top: 3px; font-family: var(--mono); }
+    .pack-md { max-height: 50vh; overflow: auto; white-space: pre-wrap; }
+    .ingest-result { margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-head">
+      <div><h1>Console</h1><div class="muted small">Inspect and manage the memory store behind every answer.</div></div>
+      <div class="row"><select class="select" id="project" style="width:auto" title="Project"></select><button class="btn btn-sm" id="refresh"></button></div>
+    </div>
+    <div class="tabs" id="tabs">
+      <button data-tab="overview" class="active">Overview</button>
+      <button data-tab="memories">Memories</button>
+      <button data-tab="review">Review <span class="badge" id="review-count" style="margin-left:4px">0</span></button>
+      <button data-tab="packs">Context packs</button>
+      <button data-tab="ingest">Ingest</button>
+      <button data-tab="data">Data</button>
+    </div>
+    <div id="view"></div>
+  </div>
+
+  <script src="/assets/common.js"></script>
+  <script>
+    const { esc, md, icon, toast } = SB;
+    SB.mountHeader('console');
+    let project = localStorage.getItem('sb-project') || '';
+    // /v1 calls are scoped to the selected project.
+    const api = (path, opts = {}) => SB.api(path, path.startsWith('/v1') && project ? { ...opts, headers: { ...(opts.headers || {}), 'X-Project-Id': project } } : opts);
+    const view = document.getElementById('view');
+    let tab = location.hash.slice(1) || 'overview';
+    document.getElementById('refresh').innerHTML = 'Refresh';
+
+    function statusBadge(s) {
+      const cls = { approved: 'ok', suggested: 'warn', archived: '', superseded: '', rejected: 'danger' }[s] ?? '';
+      return `<span class="badge ${cls}">${esc(s)}</span>`;
+    }
+    function fmtBytes(n) { return n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`; }
+    function bars(obj) {
+      const entries = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]);
+      const max = Math.max(1, ...entries.map((e) => e[1]));
+      return `<div class="bars">${entries.map(([k, v]) => `<div class="bar-row"><span class="truncate" title="${esc(k)}">${esc(k.replace(/_/g, ' '))}</span><div class="track"><div class="fill" style="width:${(v / max) * 100}%"></div></div><span class="v">${v}</span></div>`).join('')}</div>`;
+    }
+
+    async function overview() {
+      const [core, mem, sys, ing] = await Promise.all([api('/v1/stats'), api('/api/memories/stats'), api('/api/system'), api('/api/ingest/stats')]);
+      document.getElementById('review-count').textContent = core.open_reviews;
+      view.innerHTML = `
+        <div class="kpis">
+          <div class="kpi"><div class="n">${ing.documents}</div><div class="l">Documents</div></div>
+          <div class="kpi"><div class="n">${mem.totalCount}</div><div class="l">Memories (${core.approved_count} approved)</div></div>
+          <div class="kpi"><div class="n">${ing.chunks}</div><div class="l">Chunks from ${ing.resources} resources</div></div>
+          <div class="kpi"><div class="n">${ing.evidenceRecords}</div><div class="l">Evidence records</div></div>
+        </div>
+        <div class="grid2">
+          <div class="card card-pad"><h3>Memories by type</h3>${bars(mem.byType)}</div>
+          <div class="card card-pad"><h3>Memories by author</h3>${bars(mem.byAgent)}</div>
+          <div class="card card-pad">
+            <h3>Runtime</h3>
+            <dl class="kv">
+              <dt>Version</dt><dd>${esc(sys.version)}</dd>
+              <dt>Answer model</dt><dd>${esc(SB.providerLabel(sys.llm))}</dd>
+              <dt>Node.js</dt><dd>${esc(sys.node)} (${esc(sys.platform)})</dd>
+              <dt>Uptime</dt><dd>${Math.round(sys.uptime / 60)} min</dd>
+            </dl>
+          </div>
+          <div class="card card-pad">
+            <h3>Storage</h3>
+            <dl class="kv">
+              <dt>Database</dt><dd>${esc(sys.dbPath)}</dd>
+              <dt>Size</dt><dd>${fmtBytes(mem.dbSizeBytes || 0)}</dd>
+              <dt>Drop folder</dt><dd>${esc(sys.incomingDir || '—')}</dd>
+              <dt>Watcher</dt><dd>${sys.watcherActive ? 'running' : 'stopped'} · ${ing.watcher.totalFilesProcessed} files this session</dd>
+            </dl>
+          </div>
+        </div>`;
+    }
+
+    async function memories() {
+      view.innerHTML = `
+        <div class="filters">
+          <input class="input" id="m-q" placeholder="Filter by statement or subject">
+          <select class="select" id="m-status"><option value="">All statuses</option><option>approved</option><option>suggested</option><option>archived</option><option>superseded</option></select>
+          <select class="select" id="m-kind"><option value="">All kinds</option><option>decision</option><option>constraint</option><option>convention</option><option>bug_fix</option><option>lesson</option><option>reference</option></select>
+        </div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>Statement</th><th>Kind</th><th>Subject</th><th>Status</th><th></th></tr></thead><tbody id="m-body"><tr><td colspan="5"><div class="empty"><span class="spinner"></span></div></td></tr></tbody></table></div>
+        <div class="small faint" id="m-count" style="margin-top:8px"></div>`;
+      let rows = [];
+      const load = async () => {
+        const status = document.getElementById('m-status').value;
+        const kind = document.getElementById('m-kind').value;
+        const params = new URLSearchParams();
+        if (status) params.set('status', status); else params.set('includeUnreviewed', 'true');
+        if (kind) params.set('kind', kind);
+        rows = await api(`/v1/memories?${params}`);
+        render();
+      };
+      const render = () => {
+        const q = document.getElementById('m-q').value.trim().toLowerCase();
+        const shown = rows.filter((m) => !q || `${m.statement} ${m.subject_key}`.toLowerCase().includes(q));
+        document.getElementById('m-count').textContent = `${shown.length} of ${rows.length} shown (newest 100)`;
+        document.getElementById('m-body').innerHTML = shown.map((m) => `
+          <tr>
+            <td class="stmt">${esc(m.statement)}${m.evidence?.length ? `<div class="ev">${m.evidence.length} evidence · “${esc(m.evidence[0].excerpt.slice(0, 90))}${m.evidence[0].excerpt.length > 90 ? '…' : ''}”</div>` : ''}</td>
+            <td><span class="badge">${esc(m.kind)}</span></td>
+            <td class="mono small faint">${esc(m.subject_key)}</td>
+            <td>${statusBadge(m.status)}</td>
+            <td style="white-space:nowrap">
+              ${m.status === 'suggested' ? `<button class="btn btn-sm" data-tr="approved" data-id="${esc(m.id)}" data-v="${m.version}">Approve</button>` : ''}
+              ${m.status === 'suggested' || m.status === 'approved' ? `<button class="btn btn-sm btn-ghost" data-tr="archived" data-id="${esc(m.id)}" data-v="${m.version}">Archive</button>` : ''}
+            </td>
+          </tr>`).join('') || '<tr><td colspan="5"><div class="empty">No memories match.</div></td></tr>';
+        view.querySelectorAll('[data-tr]').forEach((b) => b.addEventListener('click', async () => {
+          b.disabled = true;
+          try {
+            await api(`/v1/memories/${encodeURIComponent(b.dataset.id)}/transitions`, { method: 'POST', body: { newStatus: b.dataset.tr, expectedVersion: Number(b.dataset.v), actor: 'console' } });
+            toast(`Memory ${b.dataset.tr}`);
+            load();
+          } catch (err) { toast(err.message, 'error'); b.disabled = false; }
+        }));
+      };
+      document.getElementById('m-q').addEventListener('input', render);
+      document.getElementById('m-status').addEventListener('change', load);
+      document.getElementById('m-kind').addEventListener('change', load);
+      await load();
+    }
+
+    async function review() {
+      const [items, suggested] = await Promise.all([api('/v1/review-items?status=open'), api('/v1/memories?status=suggested')]);
+      document.getElementById('review-count').textContent = items.length;
+      view.innerHTML = `
+        <div class="card card-pad" style="margin-bottom:16px">
+          <h3>Suggested memories <span class="badge">${suggested.length}</span></h3>
+          <p class="small muted" style="margin-top:-8px">New memories start as suggestions. Approved memories are used in answers and context packs.</p>
+          ${suggested.length ? `<table class="table">${suggested.map((m) => `
+            <tr><td class="stmt">${esc(m.statement)}<div class="ev">${esc(m.subject_key)} · ${esc(m.kind)}</div></td>
+            <td style="white-space:nowrap;text-align:right"><button class="btn btn-sm btn-primary" data-tr="approved" data-id="${esc(m.id)}" data-v="${m.version}">Approve</button> <button class="btn btn-sm" data-tr="archived" data-id="${esc(m.id)}" data-v="${m.version}">Archive</button></td></tr>`).join('')}</table>` : '<div class="empty small">Nothing waiting for approval.</div>'}
+        </div>
+        <div class="card card-pad">
+          <h3>Open review items <span class="badge">${items.length}</span></h3>
+          <p class="small muted" style="margin-top:-8px">Raised automatically when evidence goes stale or memories conflict.</p>
+          ${items.length ? `<table class="table">${items.map((r) => `
+            <tr><td><b>${esc(r.reason || r.type || 'Review')}</b><div class="ev">${esc(r.memory_id || '')} · ${esc(SB.timeAgo(r.created_at))}</div></td>
+            <td style="white-space:nowrap;text-align:right"><button class="btn btn-sm" data-rv="resolved" data-id="${esc(r.id)}">Resolve</button> <button class="btn btn-sm btn-ghost" data-rv="dismissed" data-id="${esc(r.id)}">Dismiss</button></td></tr>`).join('')}</table>` : '<div class="empty small">No open review items.</div>'}
+        </div>`;
+      view.querySelectorAll('[data-tr]').forEach((b) => b.addEventListener('click', async () => {
+        try {
+          await api(`/v1/memories/${encodeURIComponent(b.dataset.id)}/transitions`, { method: 'POST', body: { newStatus: b.dataset.tr, expectedVersion: Number(b.dataset.v), actor: 'console' } });
+          toast(`Memory ${b.dataset.tr}`);
+          review();
+        } catch (err) { toast(err.message, 'error'); }
+      }));
+      view.querySelectorAll('[data-rv]').forEach((b) => b.addEventListener('click', async () => {
+        try {
+          await api(`/v1/review-items/${encodeURIComponent(b.dataset.id)}/resolve`, { method: 'POST', body: { action: b.dataset.rv } });
+          toast(`Review item ${b.dataset.rv}`);
+          review();
+        } catch (err) { toast(err.message, 'error'); }
+      }));
+    }
+
+    async function packs() {
+      view.innerHTML = `
+        <div class="card card-pad" style="margin-bottom:16px">
+          <h3>Build a context pack</h3>
+          <p class="small muted" style="margin-top:-8px">A context pack is a token-budgeted, reproducible bundle of approved memories with their evidence, ready to paste into any LLM prompt.</p>
+          <form class="row" id="pack-form">
+            <input class="input grow" name="query" placeholder="e.g. webhook retries and signature verification" required>
+            <input class="input" name="budget" type="number" value="2000" min="200" step="100" style="width:110px" title="Token budget">
+            <button class="btn btn-primary">Generate</button>
+          </form>
+        </div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>Query</th><th>Memories</th><th>Tokens</th><th>Created</th><th></th></tr></thead><tbody id="pk-body"></tbody></table></div>`;
+      const load = async () => {
+        const list = await api('/v1/context-packs?limit=50');
+        document.getElementById('pk-body').innerHTML = list.map((p) => `
+          <tr><td>${esc(p.query)}</td><td>${(p.selected_ids || []).length}</td><td>${p.tokens_used ?? '—'} / ${p.budget ?? '—'}</td><td class="faint small">${esc(SB.timeAgo(p.created_at))}</td>
+          <td style="text-align:right"><button class="btn btn-sm" data-pk="${esc(p.id)}">View</button></td></tr>`).join('') || '<tr><td colspan="5"><div class="empty">No context packs yet.</div></td></tr>';
+        view.querySelectorAll('[data-pk]').forEach((b) => b.addEventListener('click', () => showPack(b.dataset.pk)));
+      };
+      document.getElementById('pack-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const f = new FormData(e.target);
+        try {
+          const pack = await api('/v1/context-packs', { method: 'POST', body: { query: f.get('query'), budget: Number(f.get('budget')), actor: 'console' } });
+          toast(pack.is_insufficient ? 'Pack created, but few memories matched the query' : `Pack created with ${pack.selected_ids.length} memories`);
+          await load();
+          showPack(pack.id);
+        } catch (err) { toast(err.message, 'error'); }
+      });
+      await load();
+    }
+
+    async function showPack(id) {
+      try {
+        const res = await fetch(`/v1/context-packs/${encodeURIComponent(id)}/markdown`, { headers: project ? { 'X-Project-Id': project } : {} });
+        const text = await res.text();
+        let markdown = text;
+        try { markdown = JSON.parse(text).markdown || text; } catch {}
+        SB.modal({
+          title: 'Context pack',
+          body: `<pre class="pack-md"><code>${esc(markdown)}</code></pre>`,
+          actions: [{ label: 'Copy markdown', primary: true, onClick: () => SB.copyText(markdown) }],
+        });
+      } catch (err) { toast(err.message, 'error'); }
+    }
+
+    async function ingest() {
+      const sys = await SB.getSystem();
+      view.innerHTML = `
+        <div class="grid2">
+          <div class="card card-pad">
+            <h3>Paste content</h3>
+            <form id="ing-form">
+              <label class="field"><span>Title</span><input class="input" name="title" required placeholder="Payments service decisions"></label>
+              <label class="field"><span>Folder</span><input class="input" name="folder" value="Knowledge"></label>
+              <label class="field"><span>Content (Markdown or plain text)</span><textarea class="textarea mono" name="content" rows="12" required placeholder="## Decisions&#10;- We decided to use Postgres for the ledger.&#10;&#10;## Constraints&#10;- Card numbers must never be logged."></textarea></label>
+              <button class="btn btn-primary">Ingest</button>
+            </form>
+            <div class="ingest-result" id="ing-result"></div>
+          </div>
+          <div class="card card-pad">
+            <h3>Drop folder</h3>
+            <p class="small muted">Any supported file placed in this folder is ingested within a few seconds, then moved to the processed folder.</p>
+            <pre><code>${esc(sys?.incomingDir || 'data/incoming')}</code></pre>
+            <p class="small muted">Supported: .md .txt .json .csv .log .yaml .yml .ts .js .py .sql</p>
+            <h3 style="margin-top:22px">What happens on ingest</h3>
+            <ol class="small muted" style="padding-left:1.2em;margin:0">
+              <li>The raw content is stored and hashed (SHA-256).</li>
+              <li>It's split into heading-aware chunks with byte offsets.</li>
+              <li>Decisions, constraints, conventions and fixes are distilled into memories.</li>
+              <li>Each memory is checked against a verbatim quote from the source before it's saved.</li>
+              <li>A document is added to the knowledge base and linked into the graph.</li>
+            </ol>
+          </div>
+        </div>`;
+      document.getElementById('ing-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const f = new FormData(e.target);
+        const btn = e.target.querySelector('button');
+        btn.disabled = true;
+        try {
+          const r = await api('/api/ingest', { method: 'POST', body: { title: f.get('title'), folder: f.get('folder'), content: f.get('content'), sourceRef: 'console:paste' } });
+          document.getElementById('ing-result').innerHTML = `
+            <div class="card card-pad" style="background:var(--bg-subtle)">
+              <div class="row" style="margin-bottom:8px"><span class="badge ok">Ingested</span><a class="small" href="/knowledge#${encodeURIComponent(r.documentId)}">Open document →</a></div>
+              <div class="small muted">${r.chunksCreated} chunks · ${r.memoriesDistilled.length} memories · ${r.evidenceCount} evidence records · ${r.graphLinksAdded} graph links</div>
+              ${r.memoriesDistilled.length ? `<ul class="small" style="margin:10px 0 0;padding-left:1.2em">${r.memoriesDistilled.slice(0, 8).map((m) => `<li><span class="badge">${esc(m.kind)}</span> ${esc(m.statement)}</li>`).join('')}</ul>` : ''}
+            </div>`;
+          e.target.reset();
+        } catch (err) { toast(err.message, 'error'); }
+        finally { btn.disabled = false; }
+      });
+    }
+
+    async function data() {
+      view.innerHTML = `
+        <div class="grid2">
+          <div class="card card-pad">
+            <h3>Back up the database</h3>
+            <p class="small muted">Downloads a consistent snapshot of the SQLite file. Restore it by replacing the database file while SharedBrain is stopped.</p>
+            <a class="btn" href="/api/export/database">${icon('download')} Download .db backup</a>
+          </div>
+          <div class="card card-pad">
+            <h3>Export as Obsidian vault</h3>
+            <p class="small muted">Exports approved memories as Markdown notes with wikilinks, bundled as JSON.</p>
+            <button class="btn" id="obs-export">${icon('download')} Export vault</button>
+          </div>
+          <div class="card card-pad">
+            <h3>Import a Markdown note</h3>
+            <p class="small muted">Imports an Obsidian-style note. Frontmatter and wikilinks are preserved.</p>
+            <input type="file" id="obs-file" accept=".md,.markdown" class="small">
+          </div>
+          <div class="card card-pad" style="border-color:var(--danger-soft)">
+            <h3>Clear memories</h3>
+            <p class="small muted">Deletes every memory (with its evidence) and the question history. Documents are kept and stay searchable. Download a backup first.</p>
+            <button class="btn btn-danger" id="clear">${icon('trash')} Clear memories</button>
+          </div>
+        </div>`;
+      document.getElementById('obs-export').addEventListener('click', async () => {
+        try {
+          const r = await api('/v1/obsidian/export', { method: 'POST' });
+          const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
+          const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `sharedbrain-vault-${new Date().toISOString().slice(0, 10)}.json` });
+          a.click();
+          toast(`Exported ${r.files_count} notes`);
+        } catch (err) { toast(err.message, 'error'); }
+      });
+      document.getElementById('obs-file').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          await api('/v1/obsidian/import', { method: 'POST', body: { filename: file.name, markdown: await file.text() } });
+          toast(`Imported ${file.name}`);
+        } catch (err) { toast(err.message, 'error'); }
+        e.target.value = '';
+      });
+      document.getElementById('clear').addEventListener('click', async () => {
+        if (!(await SB.confirmDialog('Clear memories', 'This permanently deletes all memories, their evidence, and the question history. Documents are kept.', 'Clear'))) return;
+        try {
+          await api('/api/memories/clear', { method: 'POST' });
+          toast('Memories cleared');
+        } catch (err) { toast(err.message, 'error'); }
+      });
+    }
+
+    const TABS = { overview, memories, review, packs, ingest, data };
+
+    async function show(name) {
+      tab = TABS[name] ? name : 'overview';
+      document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+      history.replaceState(null, '', tab === 'overview' ? '/console' : `#${tab}`);
+      view.innerHTML = '<div class="empty"><span class="spinner"></span></div>';
+      try { await TABS[tab](); } catch (err) { view.innerHTML = `<div class="empty">Couldn't load: ${esc(err.message)}</div>`; }
+    }
+
+    document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => show(b.dataset.tab)));
+    document.getElementById('refresh').addEventListener('click', () => show(tab));
+    window.addEventListener('hashchange', () => show(location.hash.slice(1) || 'overview'));
+    async function loadProjects() {
+      const sel = document.getElementById('project');
+      try {
+        const list = await SB.api('/v1/projects');
+        if (!list.some((p) => p.id === project)) project = list.find((p) => p.id === 'proj_sharedbrain')?.id || list[0]?.id || '';
+        sel.innerHTML = list.map((p) => `<option value="${esc(p.id)}" ${p.id === project ? 'selected' : ''}>${esc(p.name || p.id)}</option>`).join('');
+      } catch {
+        sel.classList.add('hidden');
+      }
+      sel.addEventListener('change', () => {
+        project = sel.value;
+        localStorage.setItem('sb-project', project);
+        api('/v1/stats').then((s) => (document.getElementById('review-count').textContent = s.open_reviews)).catch(() => {});
+        show(tab);
+      });
+    }
+
+    loadProjects().then(() => {
+      api('/v1/stats').then((s) => (document.getElementById('review-count').textContent = s.open_reviews)).catch(() => {});
+      show(tab);
+    });
+  </script>
+</body>
+</html>
